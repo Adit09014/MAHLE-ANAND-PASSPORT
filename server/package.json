@@ -1,0 +1,19 @@
+{
+  "name": "mahle-growth-passport",
+  "version": "1.0.0",
+  "description": "Mahle shop floor Growth Passport - employee growth performance portal",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "add-supervisor": "node seed-supervisor.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
