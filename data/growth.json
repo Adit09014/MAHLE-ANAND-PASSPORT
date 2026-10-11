@@ -1,0 +1,11 @@
+{
+  "employees": {
+    "KA1042": {
+      "name": "KA1042",
+      "createdAt": "2026-10-10T22:35:25.786Z"
+    }
+  },
+  "supervisors": {},
+  "sheetData": {},
+  "submissions": {}
+}

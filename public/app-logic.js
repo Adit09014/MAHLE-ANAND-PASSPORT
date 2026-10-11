@@ -1,499 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mahle</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --ink:#1c2440;
-    --ink-dim:#6b7290;
-    --shell:#f2f3f7;
-    --shell-2:#1e2a63;
-    --panel:#ffffff;
-    --panel-line:#dde1ee;
-    --paper:#ffffff;
-    --paper-line:#dde1ee;
-    --paper-ink:#1c2440;
-    --yellow:#1e2a63;
-    --yellow-ink:#ffffff;
-    --orange:#3a4a8f;
-    --green:#2f8f5f;
-    --red:#c5432f;
-    --radius:10px;
-    --font-display:'Space Grotesk',sans-serif;
-    --font-body:'Inter',sans-serif;
-    --font-mono:'JetBrains Mono',monospace;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--shell);
-    color:var(--ink);
-    font-family:var(--font-body);
-    min-height:100vh;
-    -webkit-font-smoothing:antialiased;
-  }
-  #app{min-height:100vh;display:flex;flex-direction:column;}
 
-  /* ---------- shared bits ---------- */
-  .hazard-strip{
-    height:6px;
-    background:repeating-linear-gradient(135deg,var(--yellow) 0 14px, #171717 14px 28px);
-    flex-shrink:0;
-  }
-  .hidden{display:none !important;}
-  button{font-family:inherit;cursor:pointer;}
-  input,select,textarea{font-family:inherit;}
-  .btn{
-    border:none;border-radius:8px;padding:11px 20px;font-weight:600;font-size:14px;
-    letter-spacing:.02em; transition:transform .12s ease, filter .12s ease;
-  }
-  .btn:active{transform:translateY(1px);}
-  .btn-primary{background:var(--yellow);color:var(--yellow-ink);}
-  .btn-primary:hover{filter:brightness(1.06);}
-  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--panel-line);}
-  .btn-ghost:hover{border-color:var(--ink-dim);}
-  .btn-dark{background:var(--shell-2);color:var(--ink);border:1px solid var(--panel-line);}
-  .btn-danger{background:transparent;color:var(--red);border:1px solid rgba(197,67,47,.5);}
-
-  /* ---------- top bar ---------- */
-  #topbar{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:14px 28px;background:#ffffff;border-bottom:1px solid var(--panel-line);
-  }
-  #topbar .brand{display:flex;align-items:center;gap:16px;}
-  #topbar .brand .brand-logo{height:30px;width:auto;display:block;}
-  #topbar .brand .word{
-    font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-    color:var(--ink-dim);border-left:2px solid var(--panel-line);padding-left:16px;line-height:1.4;
-  }
-  #topbar .who{display:flex;align-items:center;gap:12px;}
-  #topbar .who .who-text{text-align:right;}
-  #topbar .who .who-name{font-family:var(--font-display);font-weight:700;font-size:13.5px;color:var(--ink);}
-  #topbar .who .who-role{font-size:10.5px;color:var(--ink-dim);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.05em;margin-top:1px;}
-  #topbar .who .avatar{
-    width:36px;height:36px;border-radius:50%;background:#e4e6f0;color:#8890ad;flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;
-  }
-  #topbar .who .avatar svg{width:19px;height:19px;}
-
-  #appBody{display:flex;flex:1;min-height:0;}
-  #appBody.hidden{display:none;}
-
-  /* ---------- sidebar ---------- */
-  #sidebar{
-    width:250px;flex-shrink:0;background:#ffffff;border-right:1px solid var(--panel-line);
-    overflow-y:auto;padding:18px 0;
-  }
-  .sb-link-top{
-    display:block;width:100%;text-align:left;background:none;border:none;
-    padding:10px 22px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;
-  }
-  .sb-link-top:hover{background:#f4f5fa;}
-  .sb-group{border-top:1px solid var(--panel-line);margin-top:6px;padding-top:6px;}
-  .sb-group-header{
-    display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;
-    background:none;border:none;padding:10px 22px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;
-    font-family:var(--font-display);
-  }
-  .sb-group-header:hover{background:#f4f5fa;}
-  .sb-group-header .chev{color:var(--ink-dim);font-size:11px;transition:transform .15s ease;}
-  .sb-group.collapsed .chev{transform:rotate(-90deg);}
-  .sb-group-body{display:flex;flex-direction:column;}
-  .sb-group.collapsed .sb-group-body{display:none;}
-  .sb-link{
-    display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;background:none;border:none;
-    padding:8px 22px 8px 32px;font-size:13px;color:var(--ink-dim);cursor:pointer;
-  }
-  .sb-link .sb-link-num{font-family:var(--font-mono);font-size:10.5px;color:var(--panel-line);width:16px;flex-shrink:0;}
-  .sb-link:hover{background:#f4f5fa;color:var(--ink);}
-  .sb-link.active{background:#eef0f8;color:var(--shell-2);font-weight:600;}
-  .sb-link.active .sb-link-num{color:var(--shell-2);}
-
-  main{flex:1;display:flex;flex-direction:column;min-width:0;overflow-y:auto;
-    background-image:radial-gradient(rgba(30,42,99,.05) 1px, transparent 1px);background-size:15px 15px;}
-
-  /* ---------- LOGIN ---------- */
-  #screen-login{flex:1;display:flex;padding:0;min-height:100%;}
-  .login-split{display:flex;width:100%;flex:1;}
-  .login-visual{
-    flex:1.1;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:56px;
-    background:linear-gradient(155deg,#141d47 0%,var(--shell-2) 45%,#3a4a8f 100%);
-  }
-  .login-visual::before, .login-visual::after{
-    content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.06);
-  }
-  .login-visual::before{width:520px;height:520px;top:-180px;right:-160px;}
-  .login-visual::after{width:340px;height:340px;bottom:-140px;left:-100px;background:rgba(255,255,255,.05);}
-  .login-visual-inner{position:relative;z-index:1;}
-  .lv-badge{color:#fff;font-family:var(--font-display);font-weight:700;font-size:28px;letter-spacing:.01em;}
-  .lv-caption{color:rgba(255,255,255,.72);font-size:14px;margin-top:10px;max-width:320px;line-height:1.5;}
-  .login-panel{
-    width:460px;max-width:100%;background:#ffffff;display:flex;flex-direction:column;
-    justify-content:center;padding:56px 56px;
-  }
-  .login-logo{height:40px;width:auto;margin:0 auto 30px;display:block;}
-  .login-panel h1{font-family:var(--font-display);font-weight:700;font-size:24px;text-align:center;margin:0 0 24px;color:var(--paper-ink);}
-  .field{margin-bottom:16px;}
-  .field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-dim);margin-bottom:6px;font-family:var(--font-mono);}
-  .field input{
-    width:100%;background:#f6f7fb;border:1px solid var(--panel-line);border-radius:8px;
-    padding:11px 12px;color:var(--ink);font-size:15px;font-family:var(--font-mono);letter-spacing:.03em;
-  }
-  .field input:focus{outline:none;border-color:var(--shell-2);background:#fff;}
-  .login-note{font-size:12px;color:var(--ink-dim);margin-top:-6px;margin-bottom:18px;text-align:center;}
-  .login-error{color:var(--red);font-size:13px;margin-bottom:12px;min-height:16px;text-align:center;}
-  #screen-login .btn-primary{width:100%;padding:13px 20px;}
-
-  @media (max-width:780px){
-    .login-visual{display:none;}
-    .login-panel{width:100%;padding:44px 28px;}
-  }
-  @media (max-width:900px){
-    #sidebar{position:fixed;top:0;left:0;bottom:0;z-index:20;box-shadow:0 0 0 9999px rgba(0,0,0,.35);}
-  }
-
-  /* ---------- HOME ---------- */
-  #screen-home{flex:1;padding:48px 28px;display:flex;justify-content:center;}
-  .home-wrap{max-width:760px;width:100%;}
-  .home-wrap .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--yellow);}
-  .home-wrap h1{font-family:var(--font-display);font-size:32px;margin:8px 0 6px;}
-  .home-wrap p.lead{color:var(--ink-dim);font-size:15px;max-width:520px;line-height:1.5;margin-bottom:32px;}
-  .tile-go{
-    display:flex;align-items:center;justify-content:space-between;gap:20px;
-    background:var(--panel);border:1px solid var(--panel-line);border-radius:14px;
-    padding:26px 28px;transition:border-color .15s ease, transform .15s ease;
-  }
-  .tile-go:hover{border-color:var(--yellow);transform:translateY(-1px);}
-  .tile-go .t-left{display:flex;align-items:center;gap:16px;}
-  .tile-go .icon{width:48px;height:48px;border-radius:10px;background:var(--yellow);color:var(--yellow-ink);
-    display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
-  .tile-go .t-title{font-family:var(--font-display);font-size:18px;font-weight:700;}
-  .tile-go .t-sub{color:var(--ink-dim);font-size:13px;margin-top:2px;}
-  .tile-go .arrow{font-size:20px;color:var(--ink-dim);}
-
-  /* ---------- GROWTH MENU ---------- */
-  #screen-menu{flex:1;padding:36px 28px 60px;display:flex;justify-content:center;}
-  .menu-wrap{max-width:920px;width:100%;}
-  .menu-wrap .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--yellow);}
-  .menu-wrap h1{font-family:var(--font-display);font-size:28px;margin:8px 0 20px;}
-  .dropdown-row{display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap;}
-  .dropdown-row select{
-    flex:1;min-width:240px;background:var(--panel);border:1px solid var(--panel-line);color:var(--ink);
-    padding:13px 14px;border-radius:8px;font-size:14px;font-family:var(--font-body);
-  }
-  .station-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
-  .station{
-    background:var(--panel);border:1px solid var(--panel-line);border-radius:12px;padding:18px 16px;
-    text-align:left;color:var(--ink);position:relative;transition:border-color .15s ease, transform .15s ease;
-  }
-  .station:hover{border-color:var(--yellow);transform:translateY(-2px);}
-  .station .num{font-family:var(--font-mono);color:var(--yellow);font-size:12px;letter-spacing:.06em;}
-  .station .name{font-family:var(--font-display);font-weight:700;font-size:15px;margin-top:8px;line-height:1.25;}
-  .station .status{font-size:11px;color:var(--ink-dim);margin-top:10px;font-family:var(--font-mono);}
-  .station .status.saved{color:var(--green);}
-
-  /* ---------- FORM PAGES ---------- */
-  #screen-form{flex:1;padding:28px 24px 80px;display:flex;justify-content:center;}
-  .form-wrap{max-width:980px;width:100%;}
-  .form-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
-  .form-top .crumb{font-family:var(--font-mono);font-size:12px;color:var(--ink-dim);}
-  .form-top h1{font-family:var(--font-display);font-size:24px;margin:4px 0 0;}
-  .form-actions{display:flex;gap:10px;}
-  .sheet{
-    background:var(--paper);color:var(--paper-ink);border-radius:12px;padding:26px 28px;
-    box-shadow:0 12px 30px rgba(0,0,0,.35);
-  }
-  .sheet h2.section-title{
-    font-family:var(--font-display);font-size:15px;letter-spacing:.02em;
-    border-bottom:2px solid var(--paper-ink);padding-bottom:8px;margin:0 0 16px;
-  }
-  .sheet .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  .sheet .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-  .sheet label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b6455;margin-bottom:5px;font-family:var(--font-mono);}
-  .sheet input[type=text], .sheet input[type=number], .sheet input[type=date], .sheet textarea{
-    width:100%;background:#fff;border:1px solid var(--paper-line);border-radius:6px;padding:9px 10px;
-    color:var(--paper-ink);font-size:14px;
-  }
-  .sheet textarea{resize:vertical;min-height:64px;font-family:var(--font-body);}
-  .field-block{margin-bottom:16px;}
-  table.grid-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:6px;}
-  table.grid-table th, table.grid-table td{border:1px solid var(--paper-line);padding:6px 5px;text-align:center;}
-  table.grid-table th{background:#1e2a63;color:#ffffff;font-family:var(--font-mono);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;}
-  table.grid-table td.rowlabel{text-align:left;font-weight:600;background:#eef0f8;white-space:nowrap;}
-  table.grid-table input[type=number]{width:48px;padding:4px;text-align:center;border:1px solid var(--paper-line);border-radius:4px;font-size:12px;}
-  table.grid-table input[type=text].cell-text{width:100%;min-width:60px;padding:4px;border:1px solid var(--paper-line);border-radius:4px;font-size:12px;}
-  table.grid-table select.cell-sel{width:100%;padding:3px;border:1px solid var(--paper-line);border-radius:4px;font-size:11px;}
-  table.grid-table input[type=checkbox]{width:16px;height:16px;}
-  .table-scroll{overflow-x:auto;margin-bottom:10px;padding-bottom:4px;}
-  .addrow-btn{background:none;border:1px dashed #9aa3c7;color:#4a5480;border-radius:6px;padding:7px 12px;font-size:12.5px;margin-bottom:16px;}
-  .addrow-btn:hover{border-color:var(--paper-ink);color:var(--paper-ink);}
-  .swot-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  .swot-box{border:1px solid var(--paper-line);border-radius:8px;padding:14px;background:#fff;}
-  .swot-box h3{margin:0 0 8px;font-family:var(--font-display);font-size:13px;letter-spacing:.04em;}
-  .swot-box.strength h3{color:var(--green);}
-  .swot-box.weakness h3{color:var(--red);}
-  .swot-box.opportunity h3{color:#1e2a63;}
-  .swot-box.threats h3{color:var(--orange);}
-  .swot-box textarea{min-height:120px;}
-  .level-scale{display:flex;flex-direction:column;gap:6px;margin-bottom:18px;}
-  .level-opt{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--paper-line);border-radius:6px;cursor:pointer;background:#fff;}
-  .level-opt input{accent-color:var(--paper-ink);}
-  .level-opt.active{border-color:var(--paper-ink);background:#eef0f8;}
-  /* ---------- role toggle (login) ---------- */
-  .role-toggle{margin:0 0 20px;display:flex;gap:8px;background:var(--shell);border:1px solid var(--panel-line);border-radius:8px;padding:4px;width:100%;}
-  .role-toggle button{flex:1;background:transparent;border:none;color:var(--ink-dim);padding:8px 0;border-radius:6px;font-size:13px;font-weight:600;}
-  .role-toggle button.active{background:var(--yellow);color:var(--yellow-ink);}
-
-  /* ---------- read-only sheets (supervisor viewing) ---------- */
-  .sheet.readonly input, .sheet.readonly select, .sheet.readonly textarea{
-    background:#eef0f8;color:#5a6180;cursor:not-allowed;
-  }
-  .readonly-banner{
-    background:#eef0f8;border:1px solid #c3cae6;color:#1e2a63;font-size:12.5px;
-    padding:9px 12px;border-radius:7px;margin-bottom:16px;font-family:var(--font-mono);
-  }
-  .record-header{
-    background:var(--panel);border:1px solid var(--panel-line);border-radius:10px;
-    padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  }
-  .record-header .rh-name{font-family:var(--font-display);font-weight:700;font-size:16px;}
-  .record-header .rh-sub{color:var(--ink-dim);font-size:12px;font-family:var(--font-mono);margin-top:2px;}
-  .locked-tile{opacity:.45;cursor:not-allowed !important;}
-  .locked-tile:hover{border-color:var(--panel-line) !important;transform:none !important;}
-  .locked-tag{position:absolute;top:12px;right:12px;font-size:14px;}
-
-  .submit-box{
-    background:var(--panel);border:1px solid var(--panel-line);border-radius:12px;
-    padding:20px 22px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
-  }
-  .submit-box .sb-title{font-family:var(--font-display);font-weight:700;font-size:15px;}
-  .submit-box .sb-status{font-size:12.5px;color:var(--ink-dim);margin-top:4px;font-family:var(--font-mono);}
-  .submit-box .sb-status.done{color:var(--green);}
-
-  .lookup-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;}
-  .lookup-row input{flex:1;min-width:200px;background:var(--panel);border:1px solid var(--panel-line);color:var(--ink);padding:11px 12px;border-radius:8px;font-family:var(--font-mono);}
-  .lookup-error{color:var(--red);font-size:12.5px;margin-top:8px;}
-
-  .inbox-row{
-    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
-    background:var(--panel);border:1px solid var(--panel-line);border-radius:10px;padding:14px 18px;margin-bottom:10px;
-  }
-  .inbox-row .ir-emp{font-family:var(--font-display);font-weight:700;font-size:15px;}
-  .inbox-row .ir-sub{color:var(--ink-dim);font-size:12px;font-family:var(--font-mono);margin-top:2px;}
-  .status-pill{font-size:11px;padding:4px 10px;border-radius:20px;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.04em;}
-  .status-pill.new{background:rgba(242,183,5,.18);color:var(--yellow);}
-  .status-pill.reviewed{background:rgba(63,143,95,.18);color:var(--green);}
-  .empty-note{color:var(--ink-dim);font-size:13.5px;padding:20px 0;}
-
-  .save-toast{
-    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-    background:var(--green);color:#fff;padding:11px 22px;border-radius:8px;font-size:13.5px;font-weight:600;
-    box-shadow:0 8px 20px rgba(0,0,0,.35); opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
-    font-family:var(--font-body);
-  }
-  .save-toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
-  .small-note{font-size:12px;color:#6b7290;margin-top:2px;}
-  .total-row td{font-weight:700;background:#d9deef !important;}
-
-  @media (max-width:640px){
-    #topbar{padding:14px 16px;}
-    .sheet{padding:18px 16px;}
-    .sheet .grid-2, .sheet .grid-3, .swot-grid{grid-template-columns:1fr;}
-    .home-wrap h1{font-size:26px;}
-  }
-</style>
-</head>
-<body>
-<div id="app">
-  <div class="hazard-strip"></div>
-
-  <div id="topbar" class="hidden">
-    <div class="brand">
-      <img class="brand-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARcAAAA9CAYAAACHky0wAAAFZ0lEQVR4nO3dy4scRRwH8O+3umd3NiZRhKCY1+4aiJLsahADHgSj/gchIB50NgfFgw8ExQeiFz15EA8eQg5J8OAfoGAOuQhiQIKEzaKE6I6axyGaRDZuMo/6/TxsIj5n51WTnuz3c66aqm7ob09Xd1VxcqrikH8hM2RsbDh5/NCZdspPTlUugrwNPiynkwC8YQtYW60euNqq5Lpte1av4arnQb7XVUsMcI+zNDz3/dzBLzutv2XHzDqrx5dDPvqaWaObLjgcZ2tNu+/Md4d+bVVw69a9a2olOxro9wJkpw2FrIQYm2+tsrEP5uY+utxNZ9tx546ZdeWmvZGHkZe6PCfJhRvdARG5OSlcRCQJhYuIJKFwEZEkFC4ikoTCRUSSULiISBIKFxFJQuEiIkkoXEQkCYWLiCShcBGRJPIe6zuZkQwAlpuwR5g3AXfH0qy5LhAh5G215TC4xR7aGignA8kMyx/bdYS7wX1ojlEKhwghw7VJrH3/9Z7ChQx0j18bmt8SGGlV1g11ko+QYZO7ddMY3P1C9NpnBEst23I0Sawns11dtTVgS+fRjhvi8eXO43UO1AncQ2Y7h+EYpXDczRYi7DCBJtj/G1Rv4RJyxFj7NGa1/VmzvLZlYcclAAdCyLoKFyIAiGfqxOu5cU2rssFsEQyPM892eSz+hceQw2L9iJXi+6znt7ZTpxlsoWScCVm+02M9dRflJuTABVp8F3m4Yhb6PkTSW7iACM7T1W8+OQvg7HLlJ6Yrl7rORxJwLJ5uc32V8e2VH8LQDCkRcJ778djH5wCca7fW3dMzPye44cgKQYba/ImJWeCdJHfgnq4+B0B62wEVvMer3du/kgiUUjxHpkJ61mkdM8uH5wilcNw5Pl5t6zG8G8NyaxeRIaNwEZEkFC4ikoTCRUSSULjIYDii0Re6qTpav/wbiJY7FEjnnLDldn7oRa9f6Iosy90AYgsR9k9sr1wgO7qp+VVgFMBm82aqLq5EJLFpcqpyBEBM0YDCRQYkrGbIHgxdfJfjcNAN7qapDn1EcFUI+aOpfl/hIgPicGv2+uWRgqWvHCk3VNOYi4gkoXARkSQULiKShMJliBHU1CIpLIXLEHO4BjilsPS2qAAs1uHwtye2P/0K4G0GPg1E2bSWixSUwqUQHEQYQ8BYh9UwTMtKyMqicCkMV07ITUVjLiKShMJFRJLQY5EMCMEQQLCjp78/N73Q3KIErm/Vk4bCRQbC4b/D4ikDLhLoZL1gM2CUwHqQG+EamOoXhy+aNY5Cs6JlWJEB8DjvwAvzswe/wAPPtNx36m+O7Wts3PrEXaWR0RcDS6+ap5tot8K4O36aP3HgsVQNKFxkUDx4XFqQ5di+jhJizFlvepq760pGRxgfr5RTLRilAV0ZHM+6Gi+xW8qE62vkYaNwEZEkFC4ikoTCRUSS0IBuYbDzLzg0t6iACLrFcrlZu9E9WRbp1ermZDNfFS6F4XUYaiDbixh3BzACYjRtv6Qj7gB4xy+LjanJ+59csDjS8R7g/1SdHT+ZYrN4dxud2HZqivlTV8xC359iFC4FwJDDLR4x2OdA2zOjrwbgYYZ8t5u23CgK9wgHdoXc1iOWGoHdv+VykIT7hofm9p7+Clf62U8AIHA7QvYmDM1e+vl/FC4FEJghsnm4Onvww07qTU5VzgfmuyMULkXhbh5CmCbD9F8mL3RpqX75/MizQN/DhQxhbQjZnt77+d8ULgVwbeik3HE99zHXmEvR0JfmQfXtB9O9dXFYwn+9elskIkkoXEQkCYWLiCShcBGRJBQuIpKEwkVEklC4iEgSChcRSULhIiJJKFxEJAmFi4gkoXARkST+AIJPzrvPGB5jAAAAAElFTkSuQmCC" alt="Mahle">
-      <div class="word">Growth Passport<br>Shop Floor Performance Record</div>
-    </div>
-    <div class="who">
-      <div class="who-text">
-        <div class="who-name" id="whoName">—</div>
-        <div class="who-role" id="whoRole">—</div>
-      </div>
-      <div class="avatar" id="whoAvatar">—</div>
-      <button class="btn btn-ghost" id="logoutBtn">Log out</button>
-    </div>
-  </div>
-
-    <!-- LOGIN -->
-    <section id="screen-login">
-      <div class="login-split">
-        <div class="login-visual">
-          <div class="login-visual-inner">
-            <div class="lv-badge">Growth Passport</div>
-            <div class="lv-caption">Track performance. Build growth. Every year.</div>
-          </div>
-        </div>
-        <div class="login-panel">
-          <img class="login-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARcAAAA9CAYAAACHky0wAAAFZ0lEQVR4nO3dy4scRRwH8O+3umd3NiZRhKCY1+4aiJLsahADHgSj/gchIB50NgfFgw8ExQeiFz15EA8eQg5J8OAfoGAOuQhiQIKEzaKE6I6axyGaRDZuMo/6/TxsIj5n51WTnuz3c66aqm7ob09Xd1VxcqrikH8hM2RsbDh5/NCZdspPTlUugrwNPiynkwC8YQtYW60euNqq5Lpte1av4arnQb7XVUsMcI+zNDz3/dzBLzutv2XHzDqrx5dDPvqaWaObLjgcZ2tNu+/Md4d+bVVw69a9a2olOxro9wJkpw2FrIQYm2+tsrEP5uY+utxNZ9tx546ZdeWmvZGHkZe6PCfJhRvdARG5OSlcRCQJhYuIJKFwEZEkFC4ikoTCRUSSULiISBIKFxFJQuEiIkkoXEQkCYWLiCShcBGRJPIe6zuZkQwAlpuwR5g3AXfH0qy5LhAh5G215TC4xR7aGignA8kMyx/bdYS7wX1ojlEKhwghw7VJrH3/9Z7ChQx0j18bmt8SGGlV1g11ko+QYZO7ddMY3P1C9NpnBEst23I0Sawns11dtTVgS+fRjhvi8eXO43UO1AncQ2Y7h+EYpXDczRYi7DCBJtj/G1Rv4RJyxFj7NGa1/VmzvLZlYcclAAdCyLoKFyIAiGfqxOu5cU2rssFsEQyPM892eSz+hceQw2L9iJXi+6znt7ZTpxlsoWScCVm+02M9dRflJuTABVp8F3m4Yhb6PkTSW7iACM7T1W8+OQvg7HLlJ6Yrl7rORxJwLJ5uc32V8e2VH8LQDCkRcJ778djH5wCca7fW3dMzPye44cgKQYba/ImJWeCdJHfgnq4+B0B62wEVvMer3du/kgiUUjxHpkJ61mkdM8uH5wilcNw5Pl5t6zG8G8NyaxeRIaNwEZEkFC4ikoTCRUSSULjIYDii0Re6qTpav/wbiJY7FEjnnLDldn7oRa9f6Iosy90AYgsR9k9sr1wgO7qp+VVgFMBm82aqLq5EJLFpcqpyBEBM0YDCRQYkrGbIHgxdfJfjcNAN7qapDn1EcFUI+aOpfl/hIgPicGv2+uWRgqWvHCk3VNOYi4gkoXARkSQULiKShMJliBHU1CIpLIXLEHO4BjilsPS2qAAs1uHwtye2P/0K4G0GPg1E2bSWixSUwqUQHEQYQ8BYh9UwTMtKyMqicCkMV07ITUVjLiKShMJFRJLQY5EMCMEQQLCjp78/N73Q3KIErm/Vk4bCRQbC4b/D4ikDLhLoZL1gM2CUwHqQG+EamOoXhy+aNY5Cs6JlWJEB8DjvwAvzswe/wAPPtNx36m+O7Wts3PrEXaWR0RcDS6+ap5tot8K4O36aP3HgsVQNKFxkUDx4XFqQ5di+jhJizFlvepq760pGRxgfr5RTLRilAV0ZHM+6Gi+xW8qE62vkYaNwEZEkFC4ikoTCRUSS0IBuYbDzLzg0t6iACLrFcrlZu9E9WRbp1ermZDNfFS6F4XUYaiDbixh3BzACYjRtv6Qj7gB4xy+LjanJ+59csDjS8R7g/1SdHT+ZYrN4dxud2HZqivlTV8xC359iFC4FwJDDLR4x2OdA2zOjrwbgYYZ8t5u23CgK9wgHdoXc1iOWGoHdv+VykIT7hofm9p7+Clf62U8AIHA7QvYmDM1e+vl/FC4FEJghsnm4Onvww07qTU5VzgfmuyMULkXhbh5CmCbD9F8mL3RpqX75/MizQN/DhQxhbQjZnt77+d8ULgVwbeik3HE99zHXmEvR0JfmQfXtB9O9dXFYwn+9elskIkkoXEQkCYWLiCShcBGRJBQuIpKEwkVEklC4iEgSChcRSULhIiJJKFxEJAmFi4gkoXARkST+AIJPzrvPGB5jAAAAAElFTkSuQmCC" alt="Mahle">
-          <h1 id="loginHeading">Sign In</h1>
-          <div class="role-toggle" id="roleToggle">
-            <button type="button" class="active" data-role="employee">Employee</button>
-            <button type="button" data-role="supervisor">Supervisor</button>
-          </div>
-          <div class="field">
-            <label for="loginId" id="loginIdLabel">Employee ID</label>
-            <input type="text" id="loginId" placeholder="e.g. KA1042 or NTK1042" autocomplete="username">
-          </div>
-          <div class="field">
-            <label for="loginPw" id="loginPwLabel">Password</label>
-            <input type="password" id="loginPw" placeholder="Password" autocomplete="current-password">
-          </div>
-          <div class="login-note" id="loginNote">Enter your Employee ID and password to continue.</div>
-          <div class="login-error" id="loginError"></div>
-          <button class="btn btn-primary" id="loginBtn">Sign In</button>
-        </div>
-      </div>
-    </section>
-
-  <div id="appBody" class="hidden">
-    <nav id="sidebar"></nav>
-    <main>
-
-
-    <!-- HOME -->
-    <section id="screen-home" class="hidden">
-      <div class="home-wrap">
-        <div class="eyebrow" id="homeEyebrow">Home</div>
-        <h1 id="homeGreeting">Welcome</h1>
-        <p class="lead" id="homeLead">This is your growth profile. It keeps you updated on your performance through the year and helps you plan further improvement.</p>
-
-        <!-- Employee view -->
-        <div id="homeEmployee">
-          <button class="tile-go" id="goGrowthBtn" style="width:100%;border:1px solid var(--panel-line);">
-            <div class="t-left">
-              <div class="icon">&#9733;</div>
-              <div>
-                <div class="t-title">Growth Performance</div>
-                <div class="t-sub">Open your 10-point growth record</div>
-              </div>
-            </div>
-            <div class="arrow">&#8594;</div>
-          </button>
-        </div>
-
-        <!-- Supervisor view -->
-        <div id="homeSupervisor" class="hidden">
-          <button class="tile-go" id="goInboxBtn" style="width:100%;border:1px solid var(--panel-line);margin-bottom:14px;">
-            <div class="t-left">
-              <div class="icon">&#128203;</div>
-              <div>
-                <div class="t-title">Submissions Inbox</div>
-                <div class="t-sub">Records employees have submitted this month</div>
-              </div>
-            </div>
-            <div class="arrow">&#8594;</div>
-          </button>
-          <div class="tile-go" style="cursor:default;">
-            <div class="t-left" style="width:100%;">
-              <div class="icon">&#128269;</div>
-              <div style="width:100%;">
-                <div class="t-title">Look Up an Employee</div>
-                <div class="t-sub">Open any employee's record directly by ID</div>
-                <div class="lookup-row">
-                  <input type="text" id="lookupId" placeholder="Employee ID (KA... or NTK...)">
-                  <button class="btn btn-primary" id="lookupBtn">Open Record</button>
-                </div>
-                <div class="lookup-error" id="lookupError"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="tile-go" style="cursor:default;margin-top:14px;">
-            <div class="t-left" style="width:100%;">
-              <div class="icon">&#128273;</div>
-              <div style="width:100%;">
-                <div class="t-title">Change Password</div>
-                <div class="t-sub">Update the supervisor sign-in passcode</div>
-                <div class="lookup-row" style="flex-direction:column;align-items:stretch;">
-                  <input type="password" id="pwCurrent" placeholder="Current passcode">
-                  <input type="password" id="pwNew" placeholder="New passcode">
-                  <input type="password" id="pwConfirm" placeholder="Confirm new passcode">
-                  <button class="btn btn-primary" id="changePwBtn" style="width:100%;">Update Password</button>
-                </div>
-                <div class="lookup-error" id="pwError"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- SUPERVISOR INBOX -->
-    <section id="screen-inbox" class="hidden">
-      <div class="menu-wrap">
-        <div class="eyebrow">Supervisor</div>
-        <h1>Submissions Inbox</h1>
-        <div id="inboxList"></div>
-        <button class="btn btn-ghost" id="inboxBackBtn" style="margin-top:14px;">&#8592; Home</button>
-      </div>
-    </section>
-
-    <!-- GROWTH MENU / RECORD -->
-    <section id="screen-menu" class="hidden">
-      <div class="menu-wrap">
-        <div id="recordHeader" class="record-header hidden">
-          <div>
-            <div class="rh-name" id="rhName">—</div>
-            <div class="rh-sub" id="rhSub">—</div>
-          </div>
-          <button class="btn btn-dark" id="rhMarkReviewedBtn">Mark Reviewed</button>
-        </div>
-        <div class="eyebrow" id="menuEyebrow">Growth Performance</div>
-        <h1>Choose a section</h1>
-
-        <div class="submit-box hidden" id="submitBox">
-          <div>
-            <div class="sb-title">Submit this month to your supervisor</div>
-            <div class="sb-status" id="submitStatus">Not submitted yet for <span id="submitMonthLabel"></span></div>
-          </div>
-          <button class="btn btn-primary" id="submitBtn">Submit This Month</button>
-        </div>
-
-        <div class="dropdown-row">
-          <select id="sheetDropdown">
-            <option value="">— Select a section —</option>
-          </select>
-          <button class="btn btn-primary" id="dropdownGoBtn">Open</button>
-          <button class="btn btn-ghost" id="backHomeBtn">&#8592; Home</button>
-        </div>
-        <div class="station-grid" id="stationGrid"></div>
-      </div>
-    </section>
-
-    <!-- FORM VIEW -->
-    <section id="screen-form" class="hidden">
-      <div class="form-wrap">
-        <div class="form-top">
-          <div>
-            <div class="crumb" id="formCrumb">Growth Performance</div>
-            <h1 id="formTitle">Section</h1>
-          </div>
-          <div class="form-actions">
-            <button class="btn btn-ghost" id="backMenuBtn">&#8592; All sections</button>
-            <button class="btn btn-primary" id="saveBtn">Save</button>
-          </div>
-        </div>
-        <div class="sheet" id="sheetContainer"></div>
-      </div>
-    </section>
-    </main>
-  </div>
-</div>
-<div class="save-toast" id="saveToast">Saved</div>
-
-<script>
 /* ============================= CONFIG ============================= */
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const DAYS = Array.from({length:31}, (_,i)=>i+1);
@@ -989,44 +494,61 @@ COLLECTORS.lineperf = () => {
 };
 
 /* ---------- 3. ATTENDANCE SHEET ---------- */
+const ATT_CATS = ['Present (P)', 'Absent (A)', 'Leave (L)', 'Holiday (H)', 'Week Off (WO)'];
 function attendanceTable(prefix, data){
   return `<div class="table-scroll"><table class="grid-table">
-    <tr><th>Month</th>${DAYS.map(d=>`<th>${d}</th>`).join('')}</tr>
+    <tr><th>Month</th>${ATT_CATS.map(c=>`<th>${c}</th>`).join('')}</tr>
     ${MONTHS.map((m,mi)=>`
       <tr><td class="rowlabel">${m}</td>
-      ${DAYS.map((_,di)=>`
-        <td><select class="att-${prefix}" data-m="${mi}" data-d="${di}">
-          <option value="">-</option>
-          <option value="P" ${data[mi][di]==='P'?'selected':''}>P</option>
-          <option value="A" ${data[mi][di]==='A'?'selected':''}>A</option>
-          <option value="L" ${data[mi][di]==='L'?'selected':''}>L</option>
-          <option value="H" ${data[mi][di]==='H'?'selected':''}>H</option>
-          <option value="WO" ${data[mi][di]==='WO'?'selected':''}>WO</option>
-        </select></td>`).join('')}
+      ${ATT_CATS.map((_,ci)=>`
+        <td><input type="number" min="0" max="31" class="att-${prefix}" data-m="${mi}" data-c="${ci}" value="${esc(data[mi] && data[mi][ci] !== undefined ? data[mi][ci] : '')}"></td>`).join('')}
       </tr>`).join('')}
   </table></div>`;
 }
-function emptyGrid(){ return Array.from({length:12},()=>Array(31).fill('')); }
+function emptyGrid(){ return Array.from({length:12},()=>Array(5).fill('')); }
 RENDERERS.attendance = (el, d) => {
-  d = Object.assign({regular: emptyGrid(), extra: emptyGrid()}, d);
+  const now = new Date();
+  const currMonth = now.getMonth();
+  const currYear = now.getFullYear();
+  const lastMonth = currMonth === 0 ? 11 : currMonth - 1;
+  const targetYear = currMonth === 0 ? currYear - 1 : currYear;
+
+  d = Object.assign({year: targetYear, regular: emptyGrid(), extra: emptyGrid()}, d);
+
   el.innerHTML = `
     <h2 class="section-title">Attendance Sheet</h2>
-    <p class="small-note" style="margin-bottom:10px;">P = Present · A = Absent · L = Leave · H = Holiday · WO = Week Off</p>
+    <div class="field-block" style="max-width: 150px;">
+      <label class="f">Year</label>
+      <input type="number" id="att_year" value="${esc(d.year)}">
+    </div>
+    <p class="small-note" style="margin-bottom:10px;">Note: You can only fill out attendance for the last month gone.</p>
     <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6b6455;margin:14px 0 8px;">Attendance</h3>
     ${attendanceTable('reg', d.regular)}
     <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6b6455;margin:20px 0 8px;">Extra Work</h3>
     ${attendanceTable('ext', d.extra)}
   `;
+
+  const yearInput = el.querySelector('#att_year');
+  const updateLocks = () => {
+    const selYear = parseInt(yearInput.value, 10) || 0;
+    el.querySelectorAll('.att-reg, .att-ext').forEach(inp => {
+      const mi = parseInt(inp.dataset.m, 10);
+      const canEdit = (selYear === targetYear && mi === lastMonth);
+      inp.disabled = !canEdit;
+    });
+  };
+  yearInput.addEventListener('input', updateLocks);
+  updateLocks();
 };
 COLLECTORS.attendance = () => {
   const read = prefix => {
     const grid = emptyGrid();
-    document.querySelectorAll(`.att-${prefix}`).forEach(sel=>{
-      grid[+sel.dataset.m][+sel.dataset.d] = sel.value;
+    document.querySelectorAll(`.att-${prefix}`).forEach(inp=>{
+      grid[+inp.dataset.m][+inp.dataset.c] = inp.value;
     });
     return grid;
   };
-  return { regular: read('reg'), extra: read('ext') };
+  return { year: val('att_year'), regular: read('reg'), extra: read('ext') };
 };
 
 /* ---------- 4. IIP MATRIX ---------- */
@@ -1323,6 +845,3 @@ function esc(s){
   if(s===undefined || s===null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-</script>
-</body>
-</html>
