@@ -96,6 +96,18 @@ function getGlobalCycleLabel() {
   return `${m ? m.name : globalSelectedMonth} ${globalSelectedYear}`;
 }
 
+function getCycleLabel(cycleStr) {
+  if (!cycleStr) return getGlobalCycleLabel();
+  const parts = String(cycleStr).split('-');
+  if (parts.length === 2) {
+    const yr = parts[0];
+    const mo = parts[1];
+    const m = MONTH_NAMES.find(x => x.val === mo);
+    return `${m ? m.name : mo} ${yr}`;
+  }
+  return cycleStr;
+}
+
 function currentMonthLabel() {
   return getGlobalCycleLabel();
 }
@@ -421,12 +433,22 @@ async function updateActiveEmployeeInfo(empId, optName, optUnit) {
   }
 }
 
-async function selectEmployee(empId, optName, optUnit) {
+async function selectEmployee(empId, optName, optUnit, targetSheet = null) {
   viewingEmpId = empId;
   await updateActiveEmployeeInfo(empId, optName, optUnit);
   renderSidebar();
   updateEmployeeNavBar();
-  await openSheet('frontpage');
+  if (targetSheet) {
+    await openSheet(targetSheet);
+  } else {
+    try {
+      await renderMenu();
+      showScreen('menu');
+    } catch (err) {
+      console.error('Error opening 10 sections menu:', err);
+      showScreen('menu');
+    }
+  }
 }
 
 function deselectEmployee() {
@@ -486,7 +508,7 @@ function updateEmployeeNavBar() {
   // Populate Section Select Dropdown
   const select = document.getElementById('enbSheetSelect');
   if (select) {
-    select.innerHTML = SHEETS.map(s => `
+    select.innerHTML = '<option value="">— Choose a Section —</option>' + SHEETS.map(s => `
       <option value="${s.id}" ${s.id === currentSheetId ? 'selected' : ''}>
         ${String(s.num).padStart(2, '0')}. ${s.name}
       </option>
@@ -521,8 +543,13 @@ document.getElementById('enbSheetSelect')?.addEventListener('change', (e) => {
   if (e.target.value) openSheet(e.target.value);
 });
 document.getElementById('enbGridBtn')?.addEventListener('click', async () => {
-  await renderMenu();
-  showScreen('menu');
+  try {
+    await renderMenu();
+    showScreen('menu');
+  } catch (err) {
+    console.error('Error opening 10 sections menu:', err);
+    showScreen('menu');
+  }
 });
 document.getElementById('enbCloseBtn')?.addEventListener('click', () => {
   deselectEmployee();
@@ -680,10 +707,17 @@ function renderSidebar() {
 
   const menuLink = sidebar.querySelector('[data-action="menu"]');
   if (menuLink) menuLink.addEventListener('click', async () => {
-    viewingEmpId = currentEmpId;
-    await updateActiveEmployeeInfo(currentEmpId);
-    await renderMenu();
-    showScreen('menu');
+    if (!viewingEmpId) {
+      viewingEmpId = currentEmpId;
+      await updateActiveEmployeeInfo(currentEmpId);
+    }
+    try {
+      await renderMenu();
+      showScreen('menu');
+    } catch (err) {
+      console.error('Error opening 10 sections menu:', err);
+      showScreen('menu');
+    }
   });
 
   // Selected employee widget listeners
@@ -692,8 +726,13 @@ function renderSidebar() {
     if (e.target.value) openSheet(e.target.value);
   });
   sidebar.querySelector('#sbGridBtn')?.addEventListener('click', async () => {
-    await renderMenu();
-    showScreen('menu');
+    try {
+      await renderMenu();
+      showScreen('menu');
+    } catch (err) {
+      console.error('Error opening 10 sections menu:', err);
+      showScreen('menu');
+    }
   });
 
   // Employee sheet list links (for shop floor employee)
@@ -2173,16 +2212,26 @@ document.getElementById('goGrowthBtn').addEventListener('click', async () => {
   await updateActiveEmployeeInfo(currentEmpId);
   renderSidebar();
   updateEmployeeNavBar();
-  await renderMenu();
-  showScreen('menu');
+  try {
+    await renderMenu();
+    showScreen('menu');
+  } catch (err) {
+    console.error('Error opening 10 sections menu:', err);
+    showScreen('menu');
+  }
 });
 document.getElementById('backHomeBtn').addEventListener('click', () => {
   renderHome();
   showScreen('home');
 });
-document.getElementById('backMenuBtn').addEventListener('click', () => {
-  renderMenu();
-  showScreen('menu');
+document.getElementById('backMenuBtn').addEventListener('click', async () => {
+  try {
+    await renderMenu();
+    showScreen('menu');
+  } catch (err) {
+    console.error('Error opening 10 sections menu:', err);
+    showScreen('menu');
+  }
 });
 
 /* ============================= MANAGEMENT CONSOLE: QUICK ACCESS & BACK ============================= */
@@ -3302,7 +3351,9 @@ if (dropdownGoBtn) {
   });
 }
 
-async function renderMenu() {
+async function renderMenu(month = getGlobalCycle()) {
+  currentSheetId = null;
+  const currentCycle = month || getGlobalCycle();
   if (viewingEmpId && (!activeEmployeeInfo || activeEmployeeInfo.empCode !== viewingEmpId)) {
     await updateActiveEmployeeInfo(viewingEmpId);
   }
@@ -3320,23 +3371,28 @@ async function renderMenu() {
     const rhName = document.getElementById('rhName');
     if (rhName) rhName.textContent = await getDisplayName(viewingEmpId);
     const rhSub = document.getElementById('rhSub');
-    if (rhSub) rhSub.textContent = `Employee ID: ${viewingEmpId} · Sections 1–9 are read-only`;
+    if (rhSub) rhSub.textContent = `Employee ID: ${viewingEmpId} · Cycle: ${getCycleLabel(currentCycle)} · Sections 1–9 are read-only`;
+  } else if (isSup) {
+    recordHeader?.classList.add('hidden');
+    submitBox?.classList.add('hidden');
+    const menuEyebrow = document.getElementById('menuEyebrow');
+    if (menuEyebrow) menuEyebrow.textContent = 'Management View';
   } else {
     recordHeader?.classList.add('hidden');
     submitBox?.classList.remove('hidden');
     const menuEyebrow = document.getElementById('menuEyebrow');
     if (menuEyebrow) menuEyebrow.textContent = 'Growth Performance';
     const monthLabel = document.getElementById('submitMonthLabel');
-    if (monthLabel) monthLabel.textContent = getGlobalCycleLabel();
+    if (monthLabel) monthLabel.textContent = getCycleLabel(currentCycle);
     const statusEl = document.getElementById('submitStatus');
     try {
-      const { submitted, submittedAt } = await api(`/api/my-submission?month=${encodeURIComponent(getGlobalCycle())}`);
+      const { submitted, submittedAt } = await api(`/api/my-submission?month=${encodeURIComponent(currentCycle)}`);
       if (statusEl) {
         if (submitted) {
-          statusEl.textContent = `Submitted for ${getGlobalCycleLabel()} on ${new Date(submittedAt).toLocaleString()}`;
+          statusEl.textContent = `Submitted for ${getCycleLabel(currentCycle)} on ${new Date(submittedAt).toLocaleString()}`;
           statusEl.classList.add('done');
         } else {
-          statusEl.textContent = `Not submitted yet for ${getGlobalCycleLabel()}`;
+          statusEl.textContent = `Not submitted yet for ${getCycleLabel(currentCycle)}`;
           statusEl.classList.remove('done');
         }
       }
@@ -3346,32 +3402,34 @@ async function renderMenu() {
   const grid = document.getElementById('stationGrid');
   grid.innerHTML = '';
   for (const s of SHEETS) {
-    const viewOnlyTag = (s.id === 'supervisor' && !isSup); // employees can view, not edit
+    const isViewOnly = (!isSup && s.id === 'supervisor') || (isSup && s.id !== 'supervisor');
     const btn = document.createElement('button');
     btn.className = 'station';
     btn.innerHTML = `<div class="num">${String(s.num).padStart(2, '0')}</div>
       <div class="name">${s.name}</div>
       <div class="status" data-status="${s.id}">checking…</div>
-      ${viewOnlyTag ? '<div class="locked-tag" title="View only">View Only</div>' : ''}`;
+      ${isViewOnly ? '<div class="locked-tag" title="View only">View Only</div>' : ''}`;
     btn.addEventListener('click', () => openSheet(s.id));
     grid.appendChild(btn);
   }
-  const currentCycle = month || getGlobalCycle();
-  for (const s of SHEETS) {
-    const data = await loadSheetData(viewingEmpId, s.id, currentCycle);
-    const el = grid.querySelector(`[data-status="${s.id}"]`);
-    if (el) {
-      const viewOnlyTag = (s.id === 'supervisor' && !isSup);
-      const prefix = viewOnlyTag ? 'View only · ' : '';
-      if (data) {
-        el.textContent = prefix + 'Completed';
-        el.classList.add('saved');
-      } else {
-        el.textContent = prefix + 'Not started';
-        el.classList.remove('saved');
+
+  await Promise.all(SHEETS.map(async (s) => {
+    try {
+      const data = await loadSheetData(viewingEmpId, s.id, currentCycle);
+      const el = grid.querySelector(`[data-status="${s.id}"]`);
+      if (el) {
+        const isViewOnly = (!isSup && s.id === 'supervisor') || (isSup && s.id !== 'supervisor');
+        const prefix = isViewOnly ? 'View only · ' : '';
+        if (data) {
+          el.textContent = prefix + 'Completed';
+          el.classList.add('saved');
+        } else {
+          el.textContent = prefix + 'Not started';
+          el.classList.remove('saved');
+        }
       }
-    }
-  }
+    } catch (e) {}
+  }));
 }
 
 document.getElementById('submitBtn').addEventListener('click', async () => {

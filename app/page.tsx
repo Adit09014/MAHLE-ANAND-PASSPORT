@@ -1008,12 +1008,19 @@ export default function Page() {
     <!-- GROWTH MENU / RECORD -->
     <section id="screen-menu" class="hidden">
       <div class="menu-wrap">
-        <div id="recordHeader" class="record-header hidden">
+        <div id="recordHeader" class="record-header hidden" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
           <div>
             <div class="rh-name" id="rhName">—</div>
             <div class="rh-sub" id="rhSub">—</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+              <span style="font-size:11.5px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:0.5px;">Assessment Cycle:</span>
+              <select class="cycle-month-picker" id="rhMenuMonthSelect" style="padding:3px 8px;border:1px solid var(--panel-line);border-radius:6px;font-size:12px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+              <select class="cycle-year-picker" id="rhMenuYearSelect" style="padding:3px 8px;border:1px solid var(--panel-line);border-radius:6px;font-size:12px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+            </div>
           </div>
-          <button class="btn btn-dark" id="rhMarkReviewedBtn">Mark Reviewed</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="btn btn-dark" id="rhMarkReviewedBtn">Mark Reviewed</button>
+          </div>
         </div>
         <div class="eyebrow" id="menuEyebrow">Growth Performance</div>
         <h1>Growth Performance Sections</h1>
