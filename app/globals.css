@@ -81,6 +81,7 @@
   }
   #topbar .who .avatar svg{width:19px;height:19px;}
 
+
   #appBody{display:flex;flex:1;min-height:0;}
   #appBody.hidden{display:none;}
 

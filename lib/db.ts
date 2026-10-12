@@ -733,6 +733,181 @@ const store = {
       submissions: subsRes.recordset,
     };
   },
+
+  /* ---------------- super admin management & audit ---------------- */
+  async getAllUsersForAdmin(filters: { unit?: string; role?: string; status?: string; month?: string } = {}) {
+    const pool = await getPool();
+    const month = filters.month || '2026-10';
+    const request = pool.request().input('month', sql.NVarChar, month);
+
+    let query = `
+      SELECT 
+        u.id,
+        u.empCode,
+        u.name,
+        u.isActive,
+        u.createdAt,
+        r.name AS roleName,
+        r.id AS roleId,
+        un.id AS unitId,
+        un.name AS unitName,
+        un.code AS unitCode,
+        d.id AS departmentId,
+        d.name AS departmentName,
+        tl.id AS tlId,
+        tl.name AS tlName,
+        tl.empCode AS tlCode,
+        sgl.id AS sglId,
+        sgl.name AS sglName,
+        sgl.empCode AS sglCode,
+        m.id AS submissionId,
+        ISNULL(m.status, 'not_started') AS submissionStatus,
+        m.selfScore,
+        m.submittedAt,
+        ar.score AS tlScore,
+        ar.ratingGrade,
+        ar.tlComments,
+        ar.sglRemarks,
+        ar.reviewedAt,
+        ar.criteriaScores
+      FROM [User] u
+      LEFT JOIN [Role] r ON u.roleId = r.id
+      LEFT JOIN [Unit] un ON u.unitId = un.id
+      LEFT JOIN [Department] d ON u.departmentId = d.id
+      LEFT JOIN [User] tl ON u.tlId = tl.id
+      LEFT JOIN [User] sgl ON u.sglId = sgl.id
+      LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
+      LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
+      WHERE 1=1
+    `;
+
+    if (filters.unit && filters.unit !== 'all') {
+      request.input('unitFilter', sql.NVarChar, filters.unit);
+      query += ` AND (u.unitId = @unitFilter OR un.name = @unitFilter)`;
+    }
+
+    if (filters.role && filters.role !== 'all') {
+      request.input('roleFilter', sql.NVarChar, filters.role);
+      query += ` AND (r.name = @roleFilter)`;
+    }
+
+    if (filters.status === 'active') {
+      query += ` AND u.isActive = 1`;
+    } else if (filters.status === 'inactive') {
+      query += ` AND u.isActive = 0`;
+    }
+
+    query += `
+      ORDER BY 
+        CASE r.name 
+          WHEN 'Super Admin' THEN 1
+          WHEN 'HR Head' THEN 2
+          WHEN 'Unit Admin' THEN 3
+          WHEN 'Senior Group Leader (SGL)' THEN 4
+          WHEN 'Team Leader (TL)' THEN 5
+          ELSE 6
+        END,
+        un.name, u.empCode
+    `;
+
+    const res = await request.query(query);
+    return res.recordset;
+  },
+
+  async getAdminMetadata() {
+    const pool = await getPool();
+    const [units, depts, roles, tls, sgls] = await Promise.all([
+      pool.request().query('SELECT id, name, code, isActive FROM [Unit] ORDER BY name'),
+      pool.request().query('SELECT d.id, d.name, d.unitId, u.name AS unitName FROM [Department] d JOIN [Unit] u ON d.unitId = u.id ORDER BY u.name, d.name'),
+      pool.request().query('SELECT id, name FROM [Role] ORDER BY name'),
+      pool.request().query(`
+        SELECT u.id, u.empCode, u.name, u.unitId, un.name AS unitName 
+        FROM [User] u
+        JOIN [Role] r ON u.roleId = r.id
+        LEFT JOIN [Unit] un ON u.unitId = un.id
+        WHERE r.name = 'Team Leader (TL)' AND u.isActive = 1
+        ORDER BY u.name
+      `),
+      pool.request().query(`
+        SELECT u.id, u.empCode, u.name, u.unitId, un.name AS unitName 
+        FROM [User] u
+        JOIN [Role] r ON u.roleId = r.id
+        LEFT JOIN [Unit] un ON u.unitId = un.id
+        WHERE r.name = 'Senior Group Leader (SGL)' AND u.isActive = 1
+        ORDER BY u.name
+      `),
+    ]);
+
+    return {
+      units: units.recordset,
+      departments: depts.recordset,
+      roles: roles.recordset,
+      teamLeaders: tls.recordset,
+      seniorGroupLeaders: sgls.recordset,
+    };
+  },
+
+  async toggleUserActive(empCode: string) {
+    const pool = await getPool();
+    const res = await pool.request()
+      .input('empCode', sql.NVarChar, empCode.trim().toUpperCase())
+      .query(`
+        UPDATE [User]
+        SET isActive = CASE WHEN isActive = 1 THEN 0 ELSE 1 END,
+            updatedAt = SYSUTCDATETIME()
+        OUTPUT inserted.isActive, inserted.empCode, inserted.name
+        WHERE empCode = @empCode
+      `);
+    return res.recordset.length > 0 ? res.recordset[0] : null;
+  },
+
+  /* ---------------- assessment cycles ---------------- */
+  async listAssessmentCycles() {
+    const pool = await getPool();
+    const res = await pool.request().query(`
+      SELECT id, month, title, status, startDate, endDate, createdAt
+      FROM [AssessmentCycle]
+      ORDER BY month DESC
+    `);
+    return res.recordset;
+  },
+
+  async upsertAssessmentCycle(month: string, title: string, status = 'open', startDate?: string, endDate?: string) {
+    const pool = await getPool();
+    const existing = await pool.request()
+      .input('month', sql.NVarChar, month)
+      .query('SELECT id FROM [AssessmentCycle] WHERE month = @month');
+
+    if (existing.recordset.length > 0) {
+      await pool.request()
+        .input('month', sql.NVarChar, month)
+        .input('title', sql.NVarChar, title)
+        .input('status', sql.NVarChar, status)
+        .input('start', sql.DateTime2, startDate ? new Date(startDate) : null)
+        .input('end', sql.DateTime2, endDate ? new Date(endDate) : null)
+        .query(`
+          UPDATE [AssessmentCycle]
+          SET title = @title,
+              status = @status,
+              startDate = COALESCE(@start, startDate),
+              endDate = COALESCE(@end, endDate)
+          WHERE month = @month
+        `);
+      return { ok: true, action: 'updated', month };
+    } else {
+      await pool.request()
+        .input('month', sql.NVarChar, month)
+        .input('title', sql.NVarChar, title)
+        .input('status', sql.NVarChar, status)
+        .input('start', sql.DateTime2, startDate ? new Date(startDate) : null)
+        .input('end', sql.DateTime2, endDate ? new Date(endDate) : null)
+        .query(`
+          INSERT INTO [AssessmentCycle] (id, month, title, status, startDate, endDate, createdAt)
+          VALUES (CAST(NEWID() AS NVARCHAR(1000)), @month, @title, @status, @start, @end, SYSUTCDATETIME())
+        `);
+      return { ok: true, action: 'created', month };
+    }
+  },
 };
 
 export default store;

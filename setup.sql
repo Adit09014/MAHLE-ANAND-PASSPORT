@@ -254,7 +254,7 @@ DECLARE @u1DeptId NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Department] WH
 DECLARE @u2DeptId NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Department] WHERE [name] = 'Manufacturing / Production' AND [unitId] = @u2Id);
 
 -- Default Password hash for 'Mahle@123'
-DECLARE @defaultHash NVARCHAR(1000) = '$2b$10$AbDWn7Rsuq9TQmo8siz/Wuay5kPmqK/cm2Npab9JpcmewHXFrTFiS';
+DECLARE @defaultHash NVARCHAR(1000) = '$2b$10$QMNEYLpTPQHBfP36DMeGl.p094MbfOfESkryZmI/pi7FFoIT7w8aC';
 
 -- Super Admin
 IF NOT EXISTS (SELECT * FROM [dbo].[User] WHERE [empCode] = 'ADMIN01')

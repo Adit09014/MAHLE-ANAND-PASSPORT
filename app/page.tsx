@@ -18,8 +18,10 @@ export default function Page() {
   <div id="topbar" class="hidden">
     <div class="brand">
       <img class="brand-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARcAAAA9CAYAAACHky0wAAAFZ0lEQVR4nO3dy4scRRwH8O+3umd3NiZRhKCY1+4aiJLsahADHgSj/gchIB50NgfFgw8ExQeiFz15EA8eQg5J8OAfoGAOuQhiQIKEzaKE6I6axyGaRDZuMo/6/TxsIj5n51WTnuz3c66aqm7ob09Xd1VxcqrikH8hM2RsbDh5/NCZdspPTlUugrwNPiynkwC8YQtYW60euNqq5Lpte1av4arnQb7XVUsMcI+zNDz3/dzBLzutv2XHzDqrx5dDPvqaWaObLjgcZ2tNu+/Md4d+bVVw69a9a2olOxro9wJkpw2FrIQYm2+tsrEP5uY+utxNZ9tx546ZdeWmvZGHkZe6PCfJhRvdARG5OSlcRCQJhYuIJKFwEZEkFC4ikoTCRUSSULiISBIKFxFJQuEiIkkoXEQkCYWLiCShcBGRJPIe6zuZkQwAlpuwR5g3AXfH0qy5LhAh5G215TC4xR7aGignA8kMyx/bdYS7wX1ojlEKhwghw7VJrH3/9Z7ChQx0j18bmt8SGGlV1g11ko+QYZO7ddMY3P1C9NpnBEst23I0Sawns11dtTVgS+fRjhvi8eXO43UO1AncQ2Y7h+EYpXDczRYi7DCBJtj/G1Rv4RJyxFj7NGa1/VmzvLZlYcclAAdCyLoKFyIAiGfqxOu5cU2rssFsEQyPM892eSz+hceQw2L9iJXi+6znt7ZTpxlsoWScCVm+02M9dRflJuTABVp8F3m4Yhb6PkTSW7iACM7T1W8+OQvg7HLlJ6Yrl7rORxJwLJ5uc32V8e2VH8LQDCkRcJ778djH5wCca7fW3dMzPye44cgKQYba/ImJWeCdJHfgnq4+B0B62wEVvMer3du/kgiUUjxHpkJ61mkdM8uH5wilcNw5Pl5t6zG8G8NyaxeRIaNwEZEkFC4ikoTCRUSSULjIYDii0Re6qTpav/wbiJY7FEjnnLDldn7oRa9f6Iosy90AYgsR9k9sr1wgO7qp+VVgFMBm82aqLq5EJLFpcqpyBEBM0YDCRQYkrGbIHgxdfJfjcNAN7qapDn1EcFUI+aOpfl/hIgPicGv2+uWRgqWvHCk3VNOYi4gkoXARkSQULiKShMJliBHU1CIpLIXLEHO4BjilsPS2qAAs1uHwtye2P/0K4G0GPg1E2bSWixSUwqUQHEQYQ8BYh9UwTMtKyMqicCkMV07ITUVjLiKShMJFRJLQY5EMCMEQQLCjp78/N73Q3KIErm/Vk4bCRQbC4b/D4ikDLhLoZL1gM2CUwHqQG+EamOoXhy+aNY5Cs6JlWJEB8DjvwAvzswe/wAPPtNx36m+O7Wts3PrEXaWR0RcDS6+ap5tot8K4O36aP3HgsVQNKFxkUDx4XFqQ5di+jhJizFlvepq760pGRxgfr5RTLRilAV0ZHM+6Gi+xW8qE62vkYaNwEZEkFC4ikoTCRUSS0IBuYbDzLzg0t6iACLrFcrlZu9E9WRbp1ermZDNfFS6F4XUYaiDbixh3BzACYjRtv6Qj7gB4xy+LjanJ+59csDjS8R7g/1SdHT+ZYrN4dxud2HZqivlTV8xC359iFC4FwJDDLR4x2OdA2zOjrwbgYYZ8t5u23CgK9wgHdoXc1iOWGoHdv+VykIT7hofm9p7+Clf62U8AIHA7QvYmDM1e+vl/FC4FEJghsnm4Onvww07qTU5VzgfmuyMULkXhbh5CmCbD9F8mL3RpqX75/MizQN/DhQxhbQjZnt77+d8ULgVwbeik3HE99zHXmEvR0JfmQfXtB9O9dXFYwn+9elskIkkoXEQkCYWLiCShcBGRJBQuIpKEwkVEklC4iEgSChcRSULhIiJJKFxEJAmFi4gkoXARkST+AIJPzrvPGB5jAAAAAElFTkSuQmCC" alt="Mahle">
-      <div class="word">Growth Passport<br>Assessment & Performance Portal</div>
+      <div class="word">Growth Passport<br>Assessment &amp; Performance Portal</div>
     </div>
+
+
     <div class="who">
       <div class="who-text">
         <div class="who-name" id="whoName">—</div>
@@ -71,7 +73,7 @@ export default function Page() {
     <!-- EMPLOYEE RECORD SUB-NAV BAR (Dropdown, Stepper & Quick Actions for Selected Employee) -->
     <div id="employeeNavBar" class="employee-navbar hidden">
       <div class="enb-left">
-        <div class="enb-avatar">👤</div>
+        <div class="enb-avatar" style="font-size:10px;font-family:var(--font-mono);font-weight:700;display:flex;align-items:center;justify-content:center;">STAFF</div>
         <div>
           <div class="enb-name-row">
             <span class="enb-name" id="enbName">—</span>
@@ -86,18 +88,17 @@ export default function Page() {
       </div>
 
       <div class="enb-center">
-        <button type="button" class="enb-btn-step" id="enbPrevBtn" title="Previous section">◀ Prev</button>
+        <button type="button" class="enb-btn-step" id="enbPrevBtn" title="Previous section">Prev</button>
         <div class="enb-select-wrap">
-          <span class="enb-select-icon">📑</span>
           <select id="enbSheetSelect" class="enb-sheet-select" aria-label="Select Passport Section"></select>
         </div>
-        <button type="button" class="enb-btn-step" id="enbNextBtn" title="Next section">Next ▶</button>
-        <button type="button" class="btn btn-sm btn-ghost" id="enbGridBtn" title="View all 10 cards">⊞ 10 Sections</button>
+        <button type="button" class="enb-btn-step" id="enbNextBtn" title="Next section">Next</button>
+        <button type="button" class="btn btn-sm btn-ghost" id="enbGridBtn" title="View all 10 cards">All Sections</button>
       </div>
 
       <div class="enb-right">
-        <button type="button" class="btn btn-sm btn-primary hidden" id="enbEvalBtn">⭐ Evaluate (1-10)</button>
-        <button type="button" class="btn btn-sm btn-ghost enb-close-btn" id="enbCloseBtn" title="Exit employee record">✕ Back to Console</button>
+        <button type="button" class="btn btn-sm btn-primary hidden" id="enbEvalBtn">Evaluate (1-10)</button>
+        <button type="button" class="btn btn-sm btn-ghost enb-close-btn" id="enbCloseBtn" title="Exit employee record">Back to Console</button>
       </div>
     </div>
 
@@ -113,7 +114,7 @@ export default function Page() {
           <!-- Employee Profile & Passport Status Hero Card -->
           <div class="emp-hero-card" id="empHeroCard">
             <div class="emp-hero-left">
-              <div class="emp-hero-avatar" id="empHeroAvatar">👤</div>
+              <div class="emp-hero-avatar" id="empHeroAvatar" style="font-size:11px;font-family:var(--font-mono);font-weight:700;display:flex;align-items:center;justify-content:center;">EMP</div>
               <div>
                 <h2 class="emp-hero-name" id="empHeroName">Welcome</h2>
                 <div class="emp-hero-meta">
@@ -127,8 +128,8 @@ export default function Page() {
             <div class="emp-hero-right">
               <div class="emp-hero-status" id="empHeroStatus">Assessment Cycle: October 2026</div>
               <button class="emp-btn-hero" id="goGrowthBtn">
-                <span>🚀 Open 10 Passport Sections</span>
-                <span>→</span>
+                <span>Open 10 Passport Sections</span>
+                <span>View</span>
               </button>
             </div>
           </div>
@@ -152,6 +153,11 @@ export default function Page() {
 
           <!-- Super Admin / HR Head Multi-Unit Dashboard -->
           <div id="homeAdminView" class="hidden" style="margin-bottom:24px;">
+            <!-- Hidden backward-compatibility anchors -->
+            <button type="button" class="hidden" id="btnAdminAddUser"></button>
+            <button type="button" class="hidden" id="btnAdminExportCsv"></button>
+            <button type="button" class="hidden" id="btnAdminCycles"></button>
+
             <div class="unit-filter-bar" id="unitFilterBar">
               <span class="unit-filter-label">Filter Unit:</span>
               <button class="unit-pill active" data-unit="all">All Units</button>
@@ -287,86 +293,11 @@ export default function Page() {
             </div>
           </div>
 
-          <!-- Management Console Modules Quick-Access Grid -->
-          <div style="margin-top:24px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <div>
-                <h3 style="margin:0;font-family:var(--font-display);font-size:16px;">Management Console Modules</h3>
-                <p style="margin:2px 0 0;font-size:12.5px;color:var(--ink-dim);">Access dedicated consoles for submissions, employee roster, individual lookup, and account security.</p>
-              </div>
-            </div>
-
-            <div class="mgmt-grid">
-              <!-- Submissions Inbox Card -->
-              <div class="mgmt-card" id="cardGoInbox">
-                <div>
-                  <div class="mgmt-card-top">
-                    <div class="mgmt-card-icon">📋</div>
-                    <div>
-                      <div class="mgmt-card-title">Submissions Inbox</div>
-                      <p class="mgmt-card-desc">Review submitted monthly sheets, monitor approval workflows, and audit shop floor submissions.</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="mgmt-card-footer">
-                  <span>Open Submissions</span>
-                  <span>→</span>
-                </div>
-              </div>
-
-              <!-- Team & Staff Directory Card -->
-              <div class="mgmt-card" id="cardGoDirectory">
-                <div>
-                  <div class="mgmt-card-top">
-                    <div class="mgmt-card-icon">👥</div>
-                    <div>
-                      <div class="mgmt-card-title">Team & Staff Directory</div>
-                      <p class="mgmt-card-desc">Browse personnel roster, filter by evaluation status, search team members, and score performance (1-10).</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="mgmt-card-footer">
-                  <span>View Staff Directory</span>
-                  <span>→</span>
-                </div>
-              </div>
-
-              <!-- Look Up Employee Card -->
-              <div class="mgmt-card" id="cardGoLookup">
-                <div>
-                  <div class="mgmt-card-top">
-                    <div class="mgmt-card-icon">🔍</div>
-                    <div>
-                      <div class="mgmt-card-title">Look Up Employee</div>
-                      <p class="mgmt-card-desc">Direct search by Employee ID or Code across all state units to inspect 10-point Growth Passports.</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="mgmt-card-footer">
-                  <span>Search Record</span>
-                  <span>→</span>
-                </div>
-              </div>
-
-              <!-- Security & Passwords Card -->
-              <div class="mgmt-card" id="cardGoChangepw">
-                <div>
-                  <div class="mgmt-card-top">
-                    <div class="mgmt-card-icon">🔑</div>
-                    <div>
-                      <div class="mgmt-card-title">Security & Passwords</div>
-                      <p class="mgmt-card-desc">Update sign-in passcode, inspect session credentials, and configure account security settings.</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="mgmt-card-footer">
-                  <span>Security Center</span>
-                  <span>→</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
+          <!-- Hidden compatibility anchors for console screens -->
+          <div class="hidden" id="cardGoInbox"></div>
+          <div class="hidden" id="cardGoDirectory"></div>
+          <div class="hidden" id="cardGoLookup"></div>
+          <div class="hidden" id="cardGoChangepw"></div>
         </div>
       </div>
     </section>
@@ -400,7 +331,6 @@ export default function Page() {
         <!-- Inbox Toolbar -->
         <div class="inbox-toolbar">
           <div class="inbox-search-wrap">
-            <span class="inbox-search-icon">🔍</span>
             <input type="text" id="inboxSearchInput" placeholder="Filter submissions by Name, ID, or Unit...">
           </div>
           <div class="inbox-filters" id="inboxFilters">
@@ -414,7 +344,7 @@ export default function Page() {
         <!-- Submissions List Container -->
         <div id="inboxList" class="inbox-list"></div>
 
-        <button class="btn btn-ghost" id="inboxBackBtn" style="margin-top:24px;">&#8592; Back to Dashboard</button>
+        <button class="btn btn-ghost" id="inboxBackBtn" style="margin-top:24px;">Back to Dashboard</button>
       </div>
     </section>
 
@@ -426,18 +356,24 @@ export default function Page() {
         <p class="menu-lead" id="dirPageLead">Roster of assigned personnel, live submission tracking, and evaluation actions.</p>
 
         <!-- Directory Toolbar -->
-        <div class="dir-toolbar">
-          <div class="dir-search-wrap">
-            <span class="dir-search-icon">🔍</span>
-            <input type="text" id="dirSearchInput" placeholder="Filter by Name, ID, or Unit...">
+        <div class="dir-toolbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:280px;">
+            <div class="dir-search-wrap" style="flex:1;">
+              <input type="text" id="dirSearchInput" placeholder="Filter by Name, ID, or Unit...">
+            </div>
+            <div class="dir-filters" id="dirFilters">
+              <button class="dir-pill active" data-filter="all">All Personnel</button>
+              <button class="dir-pill" data-filter="pending">Pending Evaluation</button>
+              <button class="dir-pill" data-filter="evaluated">Evaluated</button>
+              <button class="dir-pill" data-filter="submitted">Submitted</button>
+              <button class="dir-pill" data-filter="deactivated">Deactivated</button>
+            </div>
           </div>
-          <div class="dir-filters" id="dirFilters">
-            <button class="dir-pill active" data-filter="all">All Personnel</button>
-            <button class="dir-pill" data-filter="pending">Pending Evaluation</button>
-            <button class="dir-pill" data-filter="evaluated">Evaluated</button>
-            <button class="dir-pill" data-filter="submitted">Submitted</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="dir-count" id="dirCountBadge" style="margin-right:4px;">Showing staff</span>
+            <button type="button" class="btn btn-sm btn-primary" id="btnDirAddUser">Add User</button>
+            <button type="button" class="btn btn-sm btn-ghost" id="btnDirExportCsv">Export CSV</button>
           </div>
-          <span class="dir-count" id="dirCountBadge">Showing staff</span>
         </div>
 
         <!-- Unit Admin Workforce Table -->
@@ -511,18 +447,20 @@ export default function Page() {
         <div id="dirAdminView" class="hidden">
           <div class="table-wrap">
             <div class="table-header">
-              <div class="table-title">Cross-Plant Workforce Directory</div>
+              <div class="table-title">Cross-Plant Enterprise Workforce & Account Directory</div>
             </div>
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Emp ID</th>
-                  <th>Employee Name</th>
+                  <th>Emp Code</th>
+                  <th>Full Name</th>
                   <th>Plant / Unit</th>
                   <th>Role</th>
-                  <th>Status</th>
+                  <th>Supervisors (TL / SGL)</th>
+                  <th>Account Status</th>
+                  <th>Oct 2026 Status</th>
                   <th>TL Score</th>
-                  <th>Action</th>
+                  <th style="min-width:180px;">Management Actions</th>
                 </tr>
               </thead>
               <tbody id="adminStaffBody"></tbody>
@@ -530,7 +468,7 @@ export default function Page() {
           </div>
         </div>
 
-        <button class="btn btn-ghost" id="dirBackBtn" style="margin-top:20px;">&#8592; Back to Dashboard</button>
+        <button class="btn btn-ghost" id="dirBackBtn" style="margin-top:20px;">Back to Dashboard</button>
       </div>
     </section>
 
@@ -566,7 +504,7 @@ export default function Page() {
         <div id="lookupPreviewBox" class="lookup-preview-card hidden">
           <div class="lookup-preview-header">
             <div class="lookup-preview-user">
-              <div class="lookup-preview-avatar">👤</div>
+              <div class="lookup-preview-avatar" style="font-size:10px;font-family:var(--font-mono);font-weight:700;display:flex;align-items:center;justify-content:center;">STAFF</div>
               <div>
                 <div class="lookup-preview-name" id="lpName">—</div>
                 <div class="lookup-preview-code" id="lpCode">—</div>
@@ -595,12 +533,12 @@ export default function Page() {
           </div>
 
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-primary" id="lpOpenBtn">📂 Open Growth Passport (10 Sections)</button>
-            <button class="btn btn-ghost" id="lpEvalBtn">⭐ Evaluate (1-10)</button>
+            <button class="btn btn-primary" id="lpOpenBtn">Open Growth Passport (10 Sections)</button>
+            <button class="btn btn-ghost" id="lpEvalBtn">Evaluate (1-10)</button>
           </div>
         </div>
 
-        <button class="btn btn-ghost" id="lookupBackBtn" style="margin-top:10px;">&#8592; Back to Dashboard</button>
+        <button class="btn btn-ghost" id="lookupBackBtn" style="margin-top:10px;">Back to Dashboard</button>
       </div>
     </section>
 
@@ -665,7 +603,7 @@ export default function Page() {
           </div>
         </div>
 
-        <button class="btn btn-ghost" id="changepwBackBtn" style="margin-top:10px;">&#8592; Back to Dashboard</button>
+        <button class="btn btn-ghost" id="changepwBackBtn" style="margin-top:10px;">Back to Dashboard</button>
       </div>
     </section>
 
@@ -695,7 +633,7 @@ export default function Page() {
         <button id="dropdownGoBtn" class="hidden"></button>
 
         <div class="station-grid" id="stationGrid"></div>
-        <button class="btn btn-ghost" id="backHomeBtn" style="margin-top:20px;">&#8592; Home</button>
+        <button class="btn btn-ghost" id="backHomeBtn" style="margin-top:20px;">Home</button>
       </div>
     </section>
 
@@ -708,7 +646,7 @@ export default function Page() {
             <h1 id="formTitle">Section</h1>
           </div>
           <div class="form-actions">
-            <button class="btn btn-ghost" id="backMenuBtn">&#8592; All sections</button>
+            <button class="btn btn-ghost" id="backMenuBtn">All sections</button>
             <button class="btn btn-primary" id="saveBtn">Save</button>
           </div>
         </div>
@@ -771,6 +709,167 @@ export default function Page() {
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
       <button type="button" class="btn btn-ghost" id="evalCancelBtn">Cancel</button>
       <button type="button" class="btn btn-primary" id="evalSubmitBtn">Submit Assessment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Super Admin User Management Modal (Add/Edit Employee/Leader/Admin) -->
+<div id="userMgmtModal" class="modal-backdrop hidden">
+  <div class="modal-card" style="max-width:640px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+      <h2 id="userMgmtTitle" style="margin:0;">User Account Management</h2>
+      <button type="button" class="btn btn-sm btn-ghost" id="userMgmtCloseX">Close</button>
+    </div>
+    <div class="modal-sub" id="userMgmtSub">Create or edit personnel profiles, system roles, plant assignments, and login credentials.</div>
+
+    <form id="userMgmtForm" onsubmit="return false;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div class="field-block">
+          <label class="f" for="userMgmtEmpCode">Employee Code / Login ID *</label>
+          <input type="text" id="userMgmtEmpCode" placeholder="e.g. KA1042, K01005, UA1002" required style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;font-family:var(--font-mono);font-weight:700;">
+          <div class="small-note">Unique system identifier for login.</div>
+        </div>
+        <div class="field-block">
+          <label class="f" for="userMgmtName">Full Name *</label>
+          <input type="text" id="userMgmtName" placeholder="e.g. Ramesh Kumar" required style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div class="field-block">
+          <label class="f" for="userMgmtRole">System Role *</label>
+          <select id="userMgmtRole" required style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;font-weight:600;">
+            <option value="Shop Floor Employee">Shop Floor Employee</option>
+            <option value="Team Leader (TL)">Team Leader (TL)</option>
+            <option value="Senior Group Leader (SGL)">Senior Group Leader (SGL)</option>
+            <option value="Unit Admin">Unit Admin</option>
+            <option value="HR Head">HR Head</option>
+            <option value="Super Admin">Super Admin</option>
+          </select>
+        </div>
+        <div class="field-block">
+          <label class="f" for="userMgmtUnit">Plant / State Unit *</label>
+          <select id="userMgmtUnit" required style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;font-weight:600;">
+            <option value="">Select Plant / Unit...</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div class="field-block">
+          <label class="f" for="userMgmtDept">Department</label>
+          <input type="text" id="userMgmtDept" placeholder="e.g. Operations, Assembly, Quality" value="Operations" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;">
+        </div>
+        <div class="field-block">
+          <label class="f" for="userMgmtPassword">Passcode / Password</label>
+          <input type="password" id="userMgmtPassword" placeholder="Default: Mahle@123 (or keep existing)" autocomplete="new-password" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;">
+          <div class="small-note" id="userMgmtPwNote">Leave blank to keep existing password.</div>
+        </div>
+      </div>
+
+      <div id="userMgmtSupervisorsBlock" style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+        <div style="font-size:12px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);margin-bottom:10px;text-transform:uppercase;">Supervisory Hierarchy Assignment</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field-block">
+            <label class="f" for="userMgmtTL">Assigned Team Leader (TL)</label>
+            <select id="userMgmtTL" style="width:100%;padding:7px 9px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;font-size:13px;">
+              <option value="">None / Not Applicable</option>
+            </select>
+          </div>
+          <div class="field-block">
+            <label class="f" for="userMgmtSGL">Assigned Senior Group Leader (SGL)</label>
+            <select id="userMgmtSGL" style="width:100%;padding:7px 9px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;font-size:13px;">
+              <option value="">None / Not Applicable</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fafafa;border:1px solid var(--panel-line);border-radius:8px;margin-bottom:16px;">
+        <div>
+          <div style="font-weight:700;font-size:13.5px;">Account Activation Status</div>
+          <div style="font-size:12px;color:var(--ink-dim);">Controls whether this user can sign in and participate in performance cycles.</div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;font-size:13px;">
+          <input type="checkbox" id="userMgmtIsActive" checked style="width:18px;height:18px;cursor:pointer;">
+          <span id="userMgmtActiveLabel">Active & Permitted</span>
+        </label>
+      </div>
+
+      <div class="lookup-error hidden" id="userMgmtError" style="margin-bottom:14px;"></div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button type="button" class="btn btn-ghost" id="userMgmtCancelBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="userMgmtSaveBtn">Save User Account</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Monthly Assessment Cycles Management Modal -->
+<div id="cycleMgmtModal" class="modal-backdrop hidden">
+  <div class="modal-card" style="max-width:700px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+      <h2 style="margin:0;">Assessment Cycles & Parameters</h2>
+      <button type="button" class="btn btn-sm btn-ghost" id="cycleMgmtCloseX">Close</button>
+    </div>
+    <div class="modal-sub">Audit existing monthly cycles, open new assessment windows, and manage submission deadlines.</div>
+
+    <!-- Cycle Table -->
+    <div class="table-wrap" style="margin-bottom:20px;max-height:220px;overflow-y:auto;">
+      <table class="data-table" style="font-size:12.5px;">
+        <thead>
+          <tr>
+            <th>Cycle Month</th>
+            <th>Title</th>
+            <th>Window Range</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="cycleListBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--ink-dim);">Loading assessment cycles…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Add/Update Cycle Form -->
+    <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--mahle-blue);">Create or Configure Assessment Cycle</div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:12px;">
+        <div class="field-block">
+          <label class="f" for="cycleInputMonth">Cycle Month (YYYY-MM) *</label>
+          <input type="text" id="cycleInputMonth" placeholder="e.g. 2026-11" required style="width:100%;padding:7px 9px;border:1px solid var(--panel-line);border-radius:6px;font-family:var(--font-mono);font-weight:700;">
+        </div>
+        <div class="field-block">
+          <label class="f" for="cycleInputTitle">Cycle Display Title *</label>
+          <input type="text" id="cycleInputTitle" placeholder="e.g. November 2026 Assessment Cycle" required style="width:100%;padding:7px 9px;border:1px solid var(--panel-line);border-radius:6px;">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div class="field-block">
+          <label class="f" for="cycleInputStartDate">Window Open Date</label>
+          <input type="date" id="cycleInputStartDate" style="width:100%;padding:7px 9px;border:1px solid var(--panel-line);border-radius:6px;">
+        </div>
+        <div class="field-block">
+          <label class="f" for="cycleInputEndDate">Window Closing / Due Date</label>
+          <input type="date" id="cycleInputEndDate" style="width:100%;padding:7px 9px;border:1px solid var(--panel-line);border-radius:6px;">
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;font-size:13px;">
+          <input type="checkbox" id="cycleInputIsOpen" checked style="width:18px;height:18px;cursor:pointer;">
+          <span>Cycle is Open for Submissions & Evaluations</span>
+        </label>
+        <button type="button" class="btn btn-sm btn-primary" id="btnSaveCycle">Save / Open Cycle</button>
+      </div>
+      <div class="lookup-error hidden" id="cycleError" style="margin-top:10px;"></div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;">
+      <button type="button" class="btn btn-ghost" id="cycleCloseBtn">Close</button>
     </div>
   </div>
 </div>

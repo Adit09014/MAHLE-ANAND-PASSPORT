@@ -371,14 +371,31 @@ function renderSidebar() {
   const isInboxActive = !screens.inbox.classList.contains('hidden');
   const isMenuActive = !screens.menu.classList.contains('hidden');
 
-  let html = `<button class="sb-link-top ${isHomeActive ? 'active' : ''}" data-action="home">🏠 Dashboard</button>`;
+  let html = `<button class="sb-link-top ${isHomeActive ? 'active' : ''}" data-action="home">Dashboard</button>`;
 
   if (!isEmp) {
+    const exact = (currentExactRole || '').toLowerCase();
+    const isAdmin = exact.includes('admin') || exact.includes('hr');
+    const isSupervisorOrLeader = currentRole === 'supervisor' || exact.includes('leader') || exact.includes('tl') || exact.includes('sgl') || isAdmin;
+
     html += `<div class="sb-section-label">Management Console</div>
-      <button class="sb-link ${isInboxActive ? 'active' : ''}" data-action="inbox"><span class="sb-link-num">📋</span>Submissions Inbox</button>
-      <button class="sb-link" data-action="directory"><span class="sb-link-num">👥</span>Team / Directory</button>
-      <button class="sb-link" data-action="lookup"><span class="sb-link-num">🔍</span>Look Up Employee</button>
-      <button class="sb-link" data-action="changepw"><span class="sb-link-num">🔑</span>Change Password</button>`;
+      <button class="sb-link ${isInboxActive ? 'active' : ''}" data-action="inbox"><span class="sb-link-num">01</span>Submissions Inbox</button>
+      <button class="sb-link" data-action="directory"><span class="sb-link-num">02</span>Workforce Directory</button>
+      <button class="sb-link" data-action="lookup"><span class="sb-link-num">03</span>Look Up Employee</button>`;
+
+    if (isAdmin) {
+      html += `
+        <button class="sb-link" data-action="add-user"><span class="sb-link-num">04</span>Add User</button>
+        <button class="sb-link" data-action="cycles"><span class="sb-link-num">05</span>Assessment Cycles</button>
+        <button class="sb-link" data-action="export-csv"><span class="sb-link-num">06</span>Export Report</button>`;
+    } else if (isSupervisorOrLeader) {
+      html += `
+        <button class="sb-link" data-action="cycles"><span class="sb-link-num">04</span>Assessment Cycles</button>
+        <button class="sb-link" data-action="export-csv"><span class="sb-link-num">05</span>Export Report</button>`;
+    }
+
+    const nextNum = isAdmin ? '07' : (isSupervisorOrLeader ? '06' : '04');
+    html += `<button class="sb-link" data-action="changepw"><span class="sb-link-num">${nextNum}</span>Security &amp; Passwords</button>`;
 
     // If an employee is currently selected:
     if (viewingEmpId && viewingEmpId !== currentEmpId) {
@@ -391,7 +408,7 @@ function renderSidebar() {
               <div class="sb-active-name" title="${esc(activeName)}">${esc(activeName)}</div>
               <div class="sb-active-code">${esc(viewingEmpId)}</div>
             </div>
-            <button class="sb-btn-close" id="sbCloseBtn" title="Close record & return to console">✕</button>
+            <button class="sb-btn-close" id="sbCloseBtn" title="Close record & return to console">Close</button>
           </div>
           <div class="sb-active-select-box">
             <label class="sb-active-label">Jump to Section:</label>
@@ -399,7 +416,7 @@ function renderSidebar() {
               ${SHEETS.map(s => `<option value="${s.id}" ${s.id === currentSheetId ? 'selected' : ''}>${String(s.num).padStart(2, '0')}. ${s.name}</option>`).join('')}
             </select>
           </div>
-          <button class="btn btn-sm btn-ghost sb-btn-grid" id="sbGridBtn">⊞ 10 Sections Grid</button>
+          <button class="btn btn-sm btn-ghost sb-btn-grid" id="sbGridBtn">10 Sections Grid</button>
         </div>
       `;
     } else {
@@ -414,7 +431,7 @@ function renderSidebar() {
   } else {
     // Shop Floor Employee view
     html += `<div class="sb-section-label">My Growth Passport</div>
-      <button class="sb-link ${isMenuActive ? 'active' : ''}" data-action="menu"><span class="sb-link-num">⊞</span>All 10 Sections</button>
+      <button class="sb-link ${isMenuActive ? 'active' : ''}" data-action="menu"><span class="sb-link-num">All</span>All 10 Sections</button>
       <div class="sb-components-list">
         ${SHEETS.map(s => `
           <button class="sb-link ${s.id === currentSheetId && !screens.form.classList.contains('hidden') ? 'active' : ''}" data-sheet="${s.id}" title="${s.name} - ${s.sub}">
@@ -422,7 +439,9 @@ function renderSidebar() {
             <span class="sb-link-text">${s.name}</span>
           </button>
         `).join('')}
-      </div>`;
+      </div>
+      <div class="sb-section-label" style="margin-top:16px;">Account Security</div>
+      <button class="sb-link" data-action="changepw"><span class="sb-link-num">Sec</span>Security &amp; Passwords</button>`;
   }
 
   sidebar.innerHTML = html;
@@ -448,6 +467,18 @@ function renderSidebar() {
   if (lookupLink) lookupLink.addEventListener('click', () => {
     renderLookupPage();
     showScreen('lookup');
+  });
+
+  sidebar.querySelector('[data-action="add-user"]')?.addEventListener('click', () => {
+    openUserMgmtModal(null);
+  });
+
+  sidebar.querySelector('[data-action="cycles"]')?.addEventListener('click', () => {
+    openCycleMgmtModal();
+  });
+
+  sidebar.querySelector('[data-action="export-csv"]')?.addEventListener('click', () => {
+    triggerCsvExport();
   });
 
   const changepwLink = sidebar.querySelector('[data-action="changepw"]');
@@ -680,7 +711,7 @@ async function renderEmployeeScorecard() {
                 <div class="emp-score-bar-fill" style="width:${pct}%;"></div>
               </div>
               <div class="emp-score-bench">
-                ${numScore >= 7.5 ? '✓ Exceeds shop floor performance benchmark (Target: ≥ 7.5 / 10.0)' : 'Benchmark Target: ≥ 7.5 / 10.0'}
+                ${numScore >= 7.5 ? 'Benchmark Achieved (Target: ≥ 7.5 / 10.0)' : 'Benchmark Target: ≥ 7.5 / 10.0'}
               </div>
             </div>
           </div>
@@ -689,7 +720,7 @@ async function renderEmployeeScorecard() {
           <div class="emp-crit-grid">
             <div class="emp-crit-card">
               <div class="emp-crit-card-top">
-                <span class="emp-crit-card-icon">🛡️</span>
+                <span class="emp-crit-card-icon" style="font-size:10px;font-weight:700;letter-spacing:0.04em;">SEC</span>
                 <span class="emp-crit-card-score">${sScore.toFixed(1)} / 10</span>
               </div>
               <div class="emp-crit-card-name">Safety & 5S</div>
@@ -700,7 +731,7 @@ async function renderEmployeeScorecard() {
 
             <div class="emp-crit-card">
               <div class="emp-crit-card-top">
-                <span class="emp-crit-card-icon">💎</span>
+                <span class="emp-crit-card-icon" style="font-size:10px;font-weight:700;letter-spacing:0.04em;">QLT</span>
                 <span class="emp-crit-card-score">${qScore.toFixed(1)} / 10</span>
               </div>
               <div class="emp-crit-card-name">Quality & Defects</div>
@@ -711,7 +742,7 @@ async function renderEmployeeScorecard() {
 
             <div class="emp-crit-card">
               <div class="emp-crit-card-top">
-                <span class="emp-crit-card-icon">⚡</span>
+                <span class="emp-crit-card-icon" style="font-size:10px;font-weight:700;letter-spacing:0.04em;">PRD</span>
                 <span class="emp-crit-card-score">${pScore.toFixed(1)} / 10</span>
               </div>
               <div class="emp-crit-card-name">Productivity</div>
@@ -722,7 +753,7 @@ async function renderEmployeeScorecard() {
 
             <div class="emp-crit-card">
               <div class="emp-crit-card-top">
-                <span class="emp-crit-card-icon">📅</span>
+                <span class="emp-crit-card-icon" style="font-size:10px;font-weight:700;letter-spacing:0.04em;">ATD</span>
                 <span class="emp-crit-card-score">${aScore.toFixed(1)} / 10</span>
               </div>
               <div class="emp-crit-card-name">Attendance</div>
@@ -733,7 +764,7 @@ async function renderEmployeeScorecard() {
 
             <div class="emp-crit-card">
               <div class="emp-crit-card-top">
-                <span class="emp-crit-card-icon">💡</span>
+                <span class="emp-crit-card-icon" style="font-size:10px;font-weight:700;letter-spacing:0.04em;">5S</span>
                 <span class="emp-crit-card-score">${kScore.toFixed(1)} / 10</span>
               </div>
               <div class="emp-crit-card-name">Kaizen & Ideas</div>
@@ -745,12 +776,12 @@ async function renderEmployeeScorecard() {
 
           <div class="emp-feedback-box">
             <div class="emp-fb-header">
-              <span>💬</span>
+              <span>Feedback:</span>
               <span>Team Leader Feedback & Coaching:</span>
             </div>
             <p class="emp-fb-text">"${esc(a.tlComments || 'Consistently maintaining outstanding performance on the assembly station, proactive in Kaizen ideas and adherence to 5S safety standards.')}"</p>
             <div class="emp-fb-author">
-              <span>✓ Verified by ${esc(evaluator)}</span>
+              <span>Verified by ${esc(evaluator)}</span>
               <span>· Official MAHLE Passport Record</span>
             </div>
           </div>
@@ -773,14 +804,14 @@ async function renderEmployeeScorecard() {
 
         <div class="emp-pending-steps">
           <div class="emp-step-item">
-            <div class="emp-step-num">✓</div>
+            <div class="emp-step-num">1</div>
             <div>
               <div class="emp-step-title">Passport Sheets</div>
               <div class="emp-step-desc">10 sections updated with monthly data</div>
             </div>
           </div>
           <div class="emp-step-item ${isSubmitted ? '' : 'active'}">
-            <div class="emp-step-num">${isSubmitted ? '✓' : '2'}</div>
+            <div class="emp-step-num">2</div>
             <div>
               <div class="emp-step-title">Monthly Submission</div>
               <div class="emp-step-desc">${isSubmitted ? 'Submitted on ' + new Date(a.submittedAt || Date.now()).toLocaleDateString() : 'Ready for submission to Team Leader'}</div>
@@ -1223,7 +1254,7 @@ async function renderInbox() {
   if (!submissions.length) {
     list.innerHTML = `
       <div style="background:#fff;border:1px dashed var(--panel-line);border-radius:12px;padding:36px;text-align:center;">
-        <div style="font-size:32px;margin-bottom:8px;">📋</div>
+        <div style="font-weight:700;font-size:12px;color:var(--ink-dim);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">No Submissions Found</div>
         <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--ink);">No Monthly Submissions Found</div>
         <p style="font-size:13px;color:var(--ink-dim);margin:6px 0 0;">Submissions will appear here once shop floor operators submit their monthly growth passports.</p>
       </div>`;
@@ -1263,14 +1294,14 @@ async function renderInbox() {
       </div>
       <div class="inbox-card-right">
         ${isEval 
-          ? `<span class="badge badge-evaluated">✓ Evaluated ${scoreVal ? Number(scoreVal).toFixed(1) + '/10' : ''}</span>`
-          : `<span class="badge badge-submitted">⏳ Awaiting Evaluation</span>`}
+          ? `<span class="badge badge-evaluated">Evaluated ${scoreVal ? Number(scoreVal).toFixed(1) + '/10' : ''}</span>`
+          : `<span class="badge badge-submitted">Awaiting Evaluation</span>`}
         
         <button class="btn btn-sm btn-primary btn-inbox-eval" data-emp="${esc(sub.empId)}" data-name="${esc(sub.name || sub.empId)}" data-score="${scoreVal || 8.5}" data-grade="${esc(sub.ratingGrade || '')}" data-comments="${esc(sub.tlComments || '')}">
-          ${isEval ? '⭐ Update Score' : '⭐ Evaluate (1-10)'}
+          ${isEval ? 'Update Score' : 'Evaluate (1-10)'}
         </button>
         <button class="btn btn-sm btn-ghost btn-inbox-open" data-emp="${esc(sub.empId)}" data-name="${esc(sub.name || sub.empId)}" data-unit="${esc(sub.unitName || '')}">
-          📂 Open Passport
+          Open Passport
         </button>
       </div>`;
 
@@ -1376,30 +1407,90 @@ async function renderDirectory() {
   applyDirectoryFilters();
 }
 
+let adminUsersCache = [];
+let adminMetadataCache = null;
+
+async function loadAdminMetadata() {
+  if (adminMetadataCache) return adminMetadataCache;
+  try {
+    const res = await api('/api/admin/metadata');
+    adminMetadataCache = res.metadata || {};
+
+    // Populate Plant / Unit dropdown
+    const unitSelect = document.getElementById('userMgmtUnit');
+    if (unitSelect && adminMetadataCache.units) {
+      unitSelect.innerHTML = '<option value="">Select Plant / Unit...</option>' +
+        adminMetadataCache.units.map(u => `<option value="${u.id}">${esc(u.name)} (${esc(u.code || u.state)})</option>`).join('');
+    }
+
+    // Populate TL dropdown
+    const tlSelect = document.getElementById('userMgmtTL');
+    if (tlSelect && adminMetadataCache.teamLeaders) {
+      tlSelect.innerHTML = '<option value="">None / Not Applicable</option>' +
+        adminMetadataCache.teamLeaders.map(tl => `<option value="${tl.id}">${esc(tl.name)} (${esc(tl.empCode)})</option>`).join('');
+    }
+
+    // Populate SGL dropdown
+    const sglSelect = document.getElementById('userMgmtSGL');
+    if (sglSelect && adminMetadataCache.seniorGroupLeaders) {
+      sglSelect.innerHTML = '<option value="">None / Not Applicable</option>' +
+        adminMetadataCache.seniorGroupLeaders.map(sgl => `<option value="${sgl.id}">${esc(sgl.name)} (${esc(sgl.empCode)})</option>`).join('');
+    }
+
+    return adminMetadataCache;
+  } catch (err) {
+    console.error('Failed to load admin metadata:', err);
+    return null;
+  }
+}
+
 async function renderAdminStaffView() {
   try {
     const res = await api('/api/admin/users?unit=all');
-    const list = res.users || [];
+    adminUsersCache = res.users || [];
     const tbody = document.getElementById('adminStaffBody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink-dim);">No workforce records found.</td></tr>';
+    if (!adminUsersCache.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--ink-dim);padding:24px;">No workforce records found.</td></tr>';
       return;
     }
 
-    list.forEach(emp => {
+    adminUsersCache.forEach(emp => {
       const tr = document.createElement('tr');
       const scoreVal = (emp.tlScore !== null && emp.tlScore !== undefined) ? emp.tlScore : emp.score;
       const isEval = !!scoreVal;
+      const isActive = emp.isActive !== false && emp.isActive !== 0;
+
       tr.innerHTML = `
         <td style="font-family:var(--font-mono);font-weight:700;">${esc(emp.empCode)}</td>
         <td style="font-weight:600;">${esc(emp.name)}</td>
-        <td><span class="who-unit">${esc(emp.unitName || 'Unit')}</span></td>
-        <td>${esc(emp.roleName || emp.role)}</td>
-        <td><span class="badge ${isEval ? 'badge-evaluated' : 'badge-pending'}">${isEval ? 'Evaluated' : 'Pending'}</span></td>
-        <td style="font-weight:700;">${isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '—'}</td>
-        <td><button class="btn btn-sm btn-ghost btn-admin-view" data-emp="${emp.empCode}" data-name="${esc(emp.name)}" data-unit="${esc(emp.unitName || '')}">View Record</button></td>
+        <td><span class="who-unit">${esc(emp.unitName || 'Plant')}</span></td>
+        <td><span style="font-size:12.5px;font-weight:600;">${esc(emp.exactRole || emp.roleName || emp.role)}</span></td>
+        <td style="font-size:12px;color:var(--ink-dim);line-height:1.4;">
+          ${emp.teamLeaderName ? `<div><strong>TL:</strong> ${esc(emp.teamLeaderName)}</div>` : ''}
+          ${emp.seniorGroupLeaderName ? `<div><strong>SGL:</strong> ${esc(emp.seniorGroupLeaderName)}</div>` : (!emp.teamLeaderName ? '—' : '')}
+        </td>
+        <td>
+          <span class="badge" style="${isActive ? 'background:#e6f4ea;color:#137333;' : 'background:#fce8e6;color:#c5221f;'}font-weight:700;">
+            ${isActive ? 'Active' : 'Deactivated'}
+          </span>
+        </td>
+        <td>
+          <span class="badge ${isEval ? 'badge-evaluated' : (emp.submittedAt ? 'badge-evaluated' : 'badge-pending')}" style="${!isEval && emp.submittedAt ? 'background:#e8f0fe;color:#1a73e8;' : ''}">
+            ${isEval ? 'Evaluated' : (emp.submittedAt ? 'Submitted' : 'Pending')}
+          </span>
+        </td>
+        <td style="font-weight:700;font-family:var(--font-mono);">${isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '—'}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-ghost btn-admin-view" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" data-unit="${esc(emp.unitName || '')}" title="Open Passport">View Record</button>
+            <button class="btn btn-sm btn-ghost btn-admin-edit" data-emp="${esc(emp.empCode)}" title="Edit User & Roles">Edit</button>
+            <button class="btn btn-sm ${isActive ? 'btn-ghost' : 'btn-primary'} btn-admin-toggle-active" data-emp="${esc(emp.empCode)}" data-active="${isActive ? '1' : '0'}" title="${isActive ? 'Deactivate Account' : 'Activate Account'}">
+              ${isActive ? 'Deactivate' : 'Activate'}
+            </button>
+          </div>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -1409,8 +1500,297 @@ async function renderAdminStaffView() {
         await selectEmployee(btn.dataset.emp, btn.dataset.name, btn.dataset.unit);
       });
     });
+
+    tbody.querySelectorAll('.btn-admin-edit').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const emp = adminUsersCache.find(u => u.empCode === btn.dataset.emp);
+        if (emp) await openUserMgmtModal(emp);
+      });
+    });
+
+    tbody.querySelectorAll('.btn-admin-toggle-active').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const empCode = btn.dataset.emp;
+        const currentlyActive = btn.dataset.active === '1';
+        await toggleUserActive(empCode, currentlyActive);
+      });
+    });
   } catch (e) {
     console.error('Error rendering admin staff view:', e);
+  }
+}
+
+async function openUserMgmtModal(userToEdit = null) {
+  await loadAdminMetadata();
+
+  const modal = document.getElementById('userMgmtModal');
+  const title = document.getElementById('userMgmtTitle');
+  const sub = document.getElementById('userMgmtSub');
+  const errEl = document.getElementById('userMgmtError');
+  const empCodeInput = document.getElementById('userMgmtEmpCode');
+  const nameInput = document.getElementById('userMgmtName');
+  const roleSelect = document.getElementById('userMgmtRole');
+  const unitSelect = document.getElementById('userMgmtUnit');
+  const deptInput = document.getElementById('userMgmtDept');
+  const tlSelect = document.getElementById('userMgmtTL');
+  const sglSelect = document.getElementById('userMgmtSGL');
+  const pwInput = document.getElementById('userMgmtPassword');
+  const pwNote = document.getElementById('userMgmtPwNote');
+  const activeCheckbox = document.getElementById('userMgmtIsActive');
+  const activeLabel = document.getElementById('userMgmtActiveLabel');
+
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  if (userToEdit) {
+    title.textContent = `Edit User: ${userToEdit.name} (${userToEdit.empCode})`;
+    sub.textContent = 'Modify personnel role, plant assignment, supervisors, and account state.';
+    empCodeInput.value = userToEdit.empCode;
+    empCodeInput.disabled = true;
+    nameInput.value = userToEdit.name || '';
+    roleSelect.value = userToEdit.exactRole || userToEdit.roleName || userToEdit.role || 'Shop Floor Employee';
+    unitSelect.value = userToEdit.unitId || '';
+    deptInput.value = userToEdit.department || 'Operations';
+    tlSelect.value = userToEdit.teamLeaderId || '';
+    sglSelect.value = userToEdit.seniorGroupLeaderId || '';
+    pwInput.value = '';
+    pwNote.textContent = 'Leave blank to preserve existing password.';
+    activeCheckbox.checked = userToEdit.isActive !== false && userToEdit.isActive !== 0;
+    activeLabel.textContent = activeCheckbox.checked ? 'Active & Permitted' : 'Deactivated / Login Blocked';
+  } else {
+    title.textContent = 'Create New User Account';
+    sub.textContent = 'Add employee, supervisor, or administrator credentials and unit assignment.';
+    empCodeInput.value = '';
+    empCodeInput.disabled = false;
+    nameInput.value = '';
+    roleSelect.value = 'Shop Floor Employee';
+    unitSelect.value = '1';
+    deptInput.value = 'Operations';
+    tlSelect.value = '';
+    sglSelect.value = '';
+    pwInput.value = '';
+    pwNote.textContent = 'Default passcode if left blank: Mahle@123';
+    activeCheckbox.checked = true;
+    activeLabel.textContent = 'Active & Permitted';
+  }
+
+  modal.classList.remove('hidden');
+}
+
+async function saveUserAccount() {
+  const errEl = document.getElementById('userMgmtError');
+  const empCode = (document.getElementById('userMgmtEmpCode')?.value || '').trim().toUpperCase();
+  const name = (document.getElementById('userMgmtName')?.value || '').trim();
+  const role = document.getElementById('userMgmtRole')?.value || 'Shop Floor Employee';
+  const unitId = parseInt(document.getElementById('userMgmtUnit')?.value || '0');
+  const department = (document.getElementById('userMgmtDept')?.value || '').trim() || 'Operations';
+  const teamLeaderId = document.getElementById('userMgmtTL')?.value ? parseInt(document.getElementById('userMgmtTL').value) : null;
+  const seniorGroupLeaderId = document.getElementById('userMgmtSGL')?.value ? parseInt(document.getElementById('userMgmtSGL').value) : null;
+  const password = (document.getElementById('userMgmtPassword')?.value || '').trim();
+  const isActive = document.getElementById('userMgmtIsActive')?.checked ?? true;
+
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  if (!empCode) {
+    errEl.textContent = 'Please provide a valid Employee Code / Login ID.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (!name) {
+    errEl.textContent = 'Please enter the user full name.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (!unitId) {
+    errEl.textContent = 'Please select a Plant / State Unit.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const payload = {
+    empCode,
+    name,
+    role,
+    unitId,
+    department,
+    teamLeaderId,
+    seniorGroupLeaderId,
+    isActive,
+  };
+  if (password) payload.password = password;
+
+  try {
+    const res = await api('/api/admin/users', { method: 'POST', body: payload });
+    showToast(res.message || 'User saved successfully');
+    document.getElementById('userMgmtModal')?.classList.add('hidden');
+    // Refresh admin cache and table
+    adminMetadataCache = null; // Invalidate metadata cache in case a new TL/SGL was added
+    await renderAdminStaffView();
+    applyDirectoryFilters();
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = err.message || 'Failed to save user account.';
+      errEl.classList.remove('hidden');
+    }
+  }
+}
+
+async function toggleUserActive(empCode, currentlyActive) {
+  try {
+    const res = await api('/api/admin/users', {
+      method: 'PATCH',
+      body: { empCode, action: 'toggle-status' }
+    });
+    showToast(res.isActive ? `Activated user ${empCode}` : `Deactivated user ${empCode}`);
+    await renderAdminStaffView();
+    applyDirectoryFilters();
+  } catch (err) {
+    alert(err.message || 'Failed to toggle account activation.');
+  }
+}
+
+// Assessment Cycle Management
+async function openCycleMgmtModal() {
+  const modal = document.getElementById('cycleMgmtModal');
+  const monthInput = document.getElementById('cycleInputMonth');
+  const titleInput = document.getElementById('cycleInputTitle');
+  const errEl = document.getElementById('cycleError');
+
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  if (monthInput && !monthInput.value) {
+    monthInput.value = '2026-11';
+  }
+  if (titleInput && !titleInput.value) {
+    titleInput.value = 'November 2026 Assessment Cycle';
+  }
+
+  modal.classList.remove('hidden');
+  await loadCycleList();
+}
+
+async function loadCycleList() {
+  const tbody = document.getElementById('cycleListBody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:14px;">Loading assessment cycles…</td></tr>';
+
+  try {
+    const res = await api('/api/admin/cycles');
+    const cycles = res.cycles || [];
+    tbody.innerHTML = '';
+    if (!cycles.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:14px;">No assessment cycles recorded.</td></tr>';
+      return;
+    }
+
+    cycles.forEach(c => {
+      const tr = document.createElement('tr');
+      const monthVal = c.month || c.cycleMonth || '';
+      const isOpen = (c.status === 'open') || (c.isOpen === true);
+      const startStr = c.startDate ? new Date(c.startDate).toISOString().slice(0,10) : '—';
+      const endStr = c.endDate ? new Date(c.endDate).toISOString().slice(0,10) : '—';
+      const range = (startStr !== '—' || endStr !== '—') ? `${startStr} to ${endStr}` : 'Standard Monthly Cycle';
+
+      tr.innerHTML = `
+        <td style="font-family:var(--font-mono);font-weight:700;">${esc(monthVal)}</td>
+        <td style="font-weight:600;">${esc(c.title || `${monthVal} Cycle`)}</td>
+        <td style="font-size:12px;color:var(--ink-dim);">${esc(range)}</td>
+        <td>
+          <span class="badge" style="${isOpen ? 'background:#e6f4ea;color:#137333;' : 'background:#f1f3f4;color:#5f6368;'}font-weight:700;">
+            ${isOpen ? 'Open' : 'Closed'}
+          </span>
+        </td>
+        <td>
+          <button class="btn btn-sm ${isOpen ? 'btn-ghost' : 'btn-primary'} btn-cycle-toggle" data-month="${esc(monthVal)}" data-open="${isOpen ? '1' : '0'}">
+            ${isOpen ? 'Close Cycle' : 'Re-open'}
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.btn-cycle-toggle').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cycleMonth = btn.dataset.month;
+        const currentOpen = btn.dataset.open === '1';
+        try {
+          await api('/api/admin/cycles', {
+            method: 'POST',
+            body: {
+              month: cycleMonth,
+              cycleMonth,
+              isOpen: !currentOpen,
+              status: !currentOpen ? 'open' : 'closed'
+            }
+          });
+          showToast(`Cycle ${cycleMonth} ${!currentOpen ? 'opened' : 'closed'}`);
+          await loadCycleList();
+        } catch (err) {
+          alert(err.message || 'Failed to toggle cycle status');
+        }
+      });
+    });
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:red;padding:14px;">Error loading cycles: ${esc(err.message)}</td></tr>`;
+  }
+}
+
+async function saveAssessmentCycle() {
+  const errEl = document.getElementById('cycleError');
+  const cycleMonth = (document.getElementById('cycleInputMonth')?.value || '').trim();
+  const title = (document.getElementById('cycleInputTitle')?.value || '').trim();
+  const startDate = document.getElementById('cycleInputStartDate')?.value || null;
+  const endDate = document.getElementById('cycleInputEndDate')?.value || null;
+  const isOpen = document.getElementById('cycleInputIsOpen')?.checked ?? true;
+
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  if (!cycleMonth || !/^\d{4}-\d{2}$/.test(cycleMonth)) {
+    errEl.textContent = 'Please enter a valid Cycle Month format (YYYY-MM, e.g. 2026-11).';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (!title) {
+    errEl.textContent = 'Please enter a cycle display title.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    await api('/api/admin/cycles', {
+      method: 'POST',
+      body: {
+        month: cycleMonth,
+        cycleMonth,
+        title,
+        startDate,
+        endDate,
+        isOpen,
+        status: isOpen ? 'open' : 'closed'
+      }
+    });
+    showToast(`Cycle ${cycleMonth} saved successfully`);
+    const mInput = document.getElementById('cycleInputMonth');
+    if (mInput) mInput.value = '';
+    const tInput = document.getElementById('cycleInputTitle');
+    if (tInput) tInput.value = '';
+    await loadCycleList();
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = err.message || 'Failed to save assessment cycle.';
+      errEl.classList.remove('hidden');
+    }
   }
 }
 
@@ -1443,6 +1823,8 @@ function applyDirectoryFilters() {
       matchesStatus = text.includes('evaluated') || text.includes('/ 10');
     } else if (filter === 'submitted') {
       matchesStatus = text.includes('submitted');
+    } else if (filter === 'deactivated') {
+      matchesStatus = text.includes('deactivated');
     }
 
     const show = matchesSearch && matchesStatus;
@@ -1466,6 +1848,32 @@ document.querySelectorAll('#dirFilters .dir-pill').forEach(btn => {
     applyDirectoryFilters();
   });
 });
+
+// User Management Modal event listeners
+document.getElementById('btnAdminAddUser')?.addEventListener('click', () => openUserMgmtModal(null));
+document.getElementById('btnDirAddUser')?.addEventListener('click', () => openUserMgmtModal(null));
+document.getElementById('userMgmtCloseX')?.addEventListener('click', () => document.getElementById('userMgmtModal')?.classList.add('hidden'));
+document.getElementById('userMgmtCancelBtn')?.addEventListener('click', () => document.getElementById('userMgmtModal')?.classList.add('hidden'));
+document.getElementById('userMgmtSaveBtn')?.addEventListener('click', saveUserAccount);
+document.getElementById('userMgmtIsActive')?.addEventListener('change', (e) => {
+  const lbl = document.getElementById('userMgmtActiveLabel');
+  if (lbl) lbl.textContent = e.target.checked ? 'Active & Permitted' : 'Deactivated / Login Blocked';
+});
+
+// CSV Export buttons
+function triggerCsvExport() {
+  showToast('Generating consolidated evaluation report…');
+  window.location.href = `/api/admin/export-csv?unit=all&month=2026-10`;
+}
+document.getElementById('btnAdminExportCsv')?.addEventListener('click', triggerCsvExport);
+document.getElementById('btnDirExportCsv')?.addEventListener('click', triggerCsvExport);
+
+// Assessment Cycle Modal event listeners
+document.getElementById('btnAdminCycles')?.addEventListener('click', openCycleMgmtModal);
+document.getElementById('cycleMgmtCloseX')?.addEventListener('click', () => document.getElementById('cycleMgmtModal')?.classList.add('hidden'));
+document.getElementById('cycleCloseBtn')?.addEventListener('click', () => document.getElementById('cycleMgmtModal')?.classList.add('hidden'));
+document.getElementById('btnSaveCycle')?.addEventListener('click', saveAssessmentCycle);
+
 
 /* ============================= DEDICATED SCREEN: LOOK UP EMPLOYEE ============================= */
 function renderLookupPage() {
@@ -1721,7 +2129,7 @@ async function renderMenu() {
     btn.innerHTML = `<div class="num">${String(s.num).padStart(2, '0')}</div>
       <div class="name">${s.name}</div>
       <div class="status" data-status="${s.id}">checking…</div>
-      ${viewOnlyTag ? '<div class="locked-tag" title="View only">&#128065;</div>' : ''}`;
+      ${viewOnlyTag ? '<div class="locked-tag" title="View only">View Only</div>' : ''}`;
     btn.addEventListener('click', () => openSheet(s.id));
     grid.appendChild(btn);
   }
@@ -1731,7 +2139,7 @@ async function renderMenu() {
     if (el) {
       const viewOnlyTag = (s.id === 'supervisor' && !isSup);
       const prefix = viewOnlyTag ? 'View only · ' : '';
-      if (data) { el.textContent = prefix + '✓ Filled'; el.classList.add('saved'); }
+      if (data) { el.textContent = prefix + 'Completed'; el.classList.add('saved'); }
       else { el.textContent = prefix + 'Not started'; }
     }
   }

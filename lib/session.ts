@@ -31,7 +31,7 @@ export async function getSession() {
 export async function setSession(payload: any) {
   const session = await encrypt(payload);
   const cookieStore = await cookies();
-  cookieStore.set('session', session, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 12 * 60 * 60 });
+  cookieStore.set('session', session, { httpOnly: true, secure: process.env.COOKIE_SECURE === 'true', sameSite: 'lax', maxAge: 12 * 60 * 60 });
 }
 
 export async function destroySession() {
