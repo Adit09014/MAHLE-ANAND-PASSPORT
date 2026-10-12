@@ -11,6 +11,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ empId: s
   const session = await getSession();
   if (!isSupervisor(session)) return NextResponse.json({ error: 'Not signed in as supervisor.' }, { status: 401 });
   const { empId, sheetId } = await params;
-  const data = await store.getSheetData(empId.toUpperCase(), sheetId);
-  return NextResponse.json({ data });
+  const url = new URL(req.url);
+  const cycle = url.searchParams.get('cycle') || url.searchParams.get('month') || '2026-10';
+  const data = await store.getSheetData(empId.toUpperCase(), sheetId, cycle);
+  return NextResponse.json({ data, cycle });
 }

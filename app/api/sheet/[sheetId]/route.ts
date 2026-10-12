@@ -15,9 +15,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ sheetId:
   const session = await getSession();
   if (!isEmployee(session)) return NextResponse.json({ error: 'Not signed in as employee.' }, { status: 401 });
   const { sheetId } = await params;
+  const url = new URL(req.url);
+  const cycle = url.searchParams.get('cycle') || url.searchParams.get('month') || '2026-10';
   const empCode = getEmpCode(session);
-  const data = await store.getSheetData(empCode, sheetId);
-  return NextResponse.json({ data });
+  const data = await store.getSheetData(empCode, sheetId, cycle);
+  return NextResponse.json({ data, cycle });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ sheetId: string }> }) {
@@ -28,9 +30,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ sheetId
   
   const empCode = getEmpCode(session);
   const data = await req.json();
-  await store.setSheetData(empCode, sheetId, data);
+  const url = new URL(req.url);
+  const cycle = url.searchParams.get('cycle') || url.searchParams.get('month') || (data && (data.cycle || data.month)) || '2026-10';
+  await store.setSheetData(empCode, sheetId, data, cycle);
   if (sheetId === 'frontpage' && data.name) {
     await store.setEmployeeName(empCode, data.name);
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, cycle });
 }

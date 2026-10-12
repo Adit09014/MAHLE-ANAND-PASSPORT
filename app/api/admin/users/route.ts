@@ -81,12 +81,13 @@ export async function POST(req: Request) {
     // Resolve Role ID
     const roleRes = await pool.request()
       .input('name', sql.NVarChar, String(roleName).trim())
-      .query('SELECT TOP 1 id FROM [Role] WHERE name = @name OR name LIKE @name + \'%\'');
+      .query('SELECT TOP 1 id, name FROM [Role] WHERE name = @name OR name LIKE @name + \'%\'');
 
     if (roleRes.recordset.length === 0) {
       return NextResponse.json({ error: `Role '${roleName}' not found.` }, { status: 400 });
     }
     const roleId = roleRes.recordset[0].id;
+    const resolvedRoleName = roleRes.recordset[0].name;
 
     // Resolve Unit ID
     let targetUnitId: string | null = null;
@@ -94,12 +95,27 @@ export async function POST(req: Request) {
       if (roleName === 'Super Admin' || roleName === 'HR Head' || roleName === 'Unit Admin') {
         return NextResponse.json({ error: 'Unit Admins cannot provision executive roles.' }, { status: 403 });
       }
-      targetUnitId = session.unitId;
+      targetUnitId = session.unitId || null;
+      if (!targetUnitId) {
+        const uAdminRes = await pool.request()
+          .input('empCode', sql.NVarChar, session.empCode || session.id)
+          .query('SELECT unitId FROM [User] WHERE empCode = @empCode');
+        targetUnitId = uAdminRes.recordset[0]?.unitId || null;
+      }
     } else if (unitInput) {
       const unitRes = await pool.request()
         .input('unitInput', sql.NVarChar, unitInput)
         .query('SELECT TOP 1 id FROM [Unit] WHERE id = @unitInput OR code = @unitInput OR name = @unitInput');
-      targetUnitId = unitRes.recordset.length > 0 ? unitRes.recordset[0].id : unitInput;
+      if (unitRes.recordset.length > 0) {
+        targetUnitId = unitRes.recordset[0].id;
+      } else {
+        return NextResponse.json({ error: `Selected Plant / Unit '${unitInput}' was not found.` }, { status: 400 });
+      }
+    }
+
+    const isExecutiveRole = resolvedRoleName === 'Super Admin' || resolvedRoleName === 'HR Head';
+    if (!targetUnitId && !isExecutiveRole) {
+      return NextResponse.json({ error: 'Please select a Plant / Unit for this user.' }, { status: 400 });
     }
 
     // Resolve Department ID
@@ -108,8 +124,20 @@ export async function POST(req: Request) {
       const deptStr = String(deptInput).trim();
       const deptRes = await pool.request()
         .input('deptStr', sql.NVarChar, deptStr)
-        .query('SELECT TOP 1 id FROM [Department] WHERE id = @deptStr OR name = @deptStr');
-      targetDeptId = deptRes.recordset.length > 0 ? deptRes.recordset[0].id : null;
+        .query('SELECT TOP 1 id FROM [Department] WHERE id = @deptStr OR name = @deptStr OR name LIKE @deptStr + \'%\'');
+      if (deptRes.recordset.length > 0) {
+        targetDeptId = deptRes.recordset[0].id;
+      } else if (targetUnitId) {
+        const newDept = await pool.request()
+          .input('name', sql.NVarChar, deptStr)
+          .input('unitId', sql.NVarChar, targetUnitId)
+          .query(`
+            DECLARE @newDeptId NVARCHAR(1000) = CAST(NEWID() AS NVARCHAR(1000));
+            INSERT INTO [Department] (id, name, unitId) VALUES (@newDeptId, @name, @unitId);
+            SELECT @newDeptId AS id;
+          `);
+        targetDeptId = newDept.recordset[0]?.id || null;
+      }
     }
 
     // Resolve TL ID
@@ -172,8 +200,8 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ ok: true, message: `Account ${codeUpper} updated successfully.`, empCode: codeUpper });
     } else {
-      // Default password to empCode or 'Mahle@123' if not specified
-      const finalHash = passwordHash || bcrypt.hashSync(codeUpper, 10);
+      // Default password to 'Mahle@123' if not specified
+      const finalHash = passwordHash || bcrypt.hashSync('Mahle@123', 10);
 
       await pool.request()
         .input('empCode', sql.NVarChar, codeUpper)
@@ -252,12 +280,44 @@ export async function PATCH(req: Request) {
     // Action 3: Quick reassign Unit/TL/SGL
     if (action === 'reassign') {
       const pool = await getPool();
+      let resolvedUnitId: string | null = null;
+      if (unitId) {
+        const uRes = await pool.request()
+          .input('unitInput', sql.NVarChar, String(unitId).trim())
+          .query('SELECT TOP 1 id FROM [Unit] WHERE id = @unitInput OR code = @unitInput OR name = @unitInput');
+        if (uRes.recordset.length > 0) resolvedUnitId = uRes.recordset[0].id;
+      }
+
+      let resolvedDeptId: string | null = null;
+      if (departmentId) {
+        const dRes = await pool.request()
+          .input('deptInput', sql.NVarChar, String(departmentId).trim())
+          .query('SELECT TOP 1 id FROM [Department] WHERE id = @deptInput OR name = @deptInput');
+        if (dRes.recordset.length > 0) resolvedDeptId = dRes.recordset[0].id;
+      }
+
+      let resolvedTlId: string | null = null;
+      if (tlId) {
+        const tlRes = await pool.request()
+          .input('tlInput', sql.NVarChar, String(tlId).trim())
+          .query('SELECT TOP 1 id FROM [User] WHERE id = @tlInput OR empCode = @tlInput');
+        if (tlRes.recordset.length > 0) resolvedTlId = tlRes.recordset[0].id;
+      }
+
+      let resolvedSglId: string | null = null;
+      if (sglId) {
+        const sglRes = await pool.request()
+          .input('sglInput', sql.NVarChar, String(sglId).trim())
+          .query('SELECT TOP 1 id FROM [User] WHERE id = @sglInput OR empCode = @sglInput');
+        if (sglRes.recordset.length > 0) resolvedSglId = sglRes.recordset[0].id;
+      }
+
       await pool.request()
         .input('empCode', sql.NVarChar, codeUpper)
-        .input('unitId', sql.NVarChar, unitId || null)
-        .input('departmentId', sql.NVarChar, departmentId || null)
-        .input('tlId', sql.NVarChar, tlId || null)
-        .input('sglId', sql.NVarChar, sglId || null)
+        .input('unitId', sql.NVarChar, resolvedUnitId)
+        .input('departmentId', sql.NVarChar, resolvedDeptId)
+        .input('tlId', sql.NVarChar, resolvedTlId)
+        .input('sglId', sql.NVarChar, resolvedSglId)
         .query(`
           UPDATE [User]
           SET unitId = COALESCE(@unitId, unitId),

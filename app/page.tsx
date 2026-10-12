@@ -21,6 +21,14 @@ export default function Page() {
       <div class="word">Growth Passport<br>Assessment &amp; Performance Portal</div>
     </div>
 
+    <div class="topbar-cycle-picker" id="topbarCyclePicker" style="display:flex;align-items:center;gap:6px;background:#f0f4fa;border:1px solid #d0ddec;border-radius:8px;padding:4px 10px;margin-left:auto;margin-right:12px;">
+      <span style="font-size:11px;font-weight:700;color:#1e2a63;text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:4px;">
+        📅 Cycle:
+      </span>
+      <select class="cycle-month-picker" id="topbarMonthSelect" style="padding:4px 7px;border:1px solid #c2d3ea;border-radius:6px;font-weight:600;font-size:12px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+      <select class="cycle-year-picker" id="topbarYearSelect" style="padding:4px 7px;border:1px solid #c2d3ea;border-radius:6px;font-weight:600;font-size:12px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+      <span class="badge badge-evaluated" id="topbarCycleBadge" style="font-size:10px;padding:2px 6px;">Active</span>
+    </div>
 
     <div class="who">
       <div class="who-text">
@@ -31,6 +39,10 @@ export default function Page() {
         </div>
       </div>
       <div class="avatar" id="whoAvatar">—</div>
+      <button type="button" class="btn btn-ghost" id="topbarManageUnitsBtn" style="font-weight:700;display:none;align-items:center;gap:6px;border:1px solid var(--panel-line);border-radius:6px;padding:6px 11px;font-size:12.5px;color:var(--mahle-blue);background:#fff;" title="Manage Plant &amp; Unit Names">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <span>Edit Units</span>
+      </button>
       <button class="btn btn-ghost" id="logoutBtn">Log out</button>
     </div>
   </div>
@@ -134,6 +146,19 @@ export default function Page() {
             </div>
           </div>
 
+          <!-- Employee Assessment Cycle Selector Bar -->
+          <div class="emp-cycle-selector-bar" id="empCycleBar" style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <span style="font-weight:700;font-size:12px;color:#1e2a63;text-transform:uppercase;letter-spacing:0.5px;">Select Assessment Month &amp; Year:</span>
+              <select class="cycle-month-picker" id="empScoreMonthSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:600;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+              <select class="cycle-year-picker" id="empScoreYearSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:600;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="badge badge-evaluated" id="empScoreCycleBadge">October 2026 Cycle</span>
+              <span style="font-size:11.5px;color:var(--ink-dim);">Switch cycle to view historical scorecard</span>
+            </div>
+          </div>
+
           <!-- Current Month Scorecard -->
           <div id="employeeScorecard" class="hidden"></div>
 
@@ -156,18 +181,35 @@ export default function Page() {
             <!-- Hidden backward-compatibility anchors -->
             <button type="button" class="hidden" id="btnAdminAddUser"></button>
             <button type="button" class="hidden" id="btnAdminExportCsv"></button>
-            <button type="button" class="hidden" id="btnAdminCycles"></button>
-
-            <div class="unit-filter-bar" id="unitFilterBar">
-              <span class="unit-filter-label">Filter Unit:</span>
-              <button class="unit-pill active" data-unit="all">All Units</button>
-              <button class="unit-pill" data-unit="Gurugram">Gurugram</button>
-              <button class="unit-pill" data-unit="State Unit 2">State Unit 2</button>
-              <button class="unit-pill" data-unit="State Unit 3">State Unit 3</button>
-              <button class="unit-pill" data-unit="State Unit 4">State Unit 4</button>
+            <!-- Admin Assessment Cycle Selector Bar -->
+            <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span style="font-weight:700;font-size:12.5px;color:#1e2a63;text-transform:uppercase;letter-spacing:0.5px;">Assessment Cycle:</span>
+                <select class="cycle-month-picker" id="adminMonthSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:600;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+                <select class="cycle-year-picker" id="adminYearSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:600;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="badge badge-evaluated" id="adminCycleBadge">October 2026</span>
+                <span style="font-size:11.5px;color:var(--ink-dim);" id="adminScopeBadge">Multi-Unit Scope (All Plants)</span>
+              </div>
             </div>
 
-            <div class="stat-grid" id="adminKpiGrid">
+            <div class="unit-filter-bar" id="unitFilterBar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span class="unit-filter-label">Filter Unit:</span>
+              <div id="dynamicUnitPills" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <button type="button" class="unit-pill active" data-unit="all">All Units</button>
+                <button type="button" class="unit-pill" data-unit="Gurugram">Gurugram</button>
+                <button type="button" class="unit-pill" data-unit="Khandsa">Khandsa</button>
+                <button type="button" class="unit-pill" data-unit="State Unit 3">State Unit 3</button>
+                <button type="button" class="unit-pill" data-unit="State Unit 4">State Unit 4</button>
+              </div>
+              <button type="button" class="btn btn-xs btn-ghost" id="unitBarEditBtn" style="margin-left:auto;font-size:12px;display:none;align-items:center;gap:4px;border:1px dashed var(--panel-line);padding:4px 10px;border-radius:20px;font-weight:600;color:var(--mahle-blue);" title="Rename Plant Units (Admin & HR Head)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                <span>Edit Unit Names</span>
+              </button>
+            </div>
+
+            <div class="stat-grid" id="adminKpiGrid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));">
               <div class="stat-card">
                 <span class="stat-label">Total Employees</span>
                 <span class="stat-num" id="kpiTotalEmp">0</span>
@@ -177,6 +219,11 @@ export default function Page() {
                 <span class="stat-label">Reports Submitted</span>
                 <span class="stat-num" id="kpiSubmitted">0</span>
                 <span class="stat-sub" id="kpiSubRate">0% Submission</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-label">Pending TL Rating</span>
+                <span class="stat-num" id="kpiPendingReviews" style="color:#b45309;">0</span>
+                <span class="stat-sub" id="kpiPendingRate">Awaiting Evaluation</span>
               </div>
               <div class="stat-card">
                 <span class="stat-label">Evaluations Done</span>
@@ -210,10 +257,42 @@ export default function Page() {
                 </tbody>
               </table>
             </div>
+
+            <div class="table-wrap" style="margin-top:20px;">
+              <div class="table-header">
+                <div class="table-title">Senior Group Leader (SGL) & Team Performance Matrix</div>
+              </div>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Senior Group Leader (SGL)</th>
+                    <th>Plant / Unit</th>
+                    <th>Group Staff</th>
+                    <th>Submitted</th>
+                    <th>Evaluated</th>
+                    <th>Avg Score (1-10)</th>
+                  </tr>
+                </thead>
+                <tbody id="sglMatrixBody">
+                  <tr><td colspan="6" style="text-align:center;color:var(--ink-dim);">Loading group metrics…</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Unit Admin View -->
           <div id="homeUnitAdminView" class="hidden" style="margin-bottom:20px;">
+            <!-- Unit Admin Assessment Cycle Selector Bar -->
+            <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span style="font-weight:700;font-size:12.5px;color:#1e2a63;text-transform:uppercase;letter-spacing:0.5px;">Assessment Cycle:</span>
+                <select class="cycle-month-picker" id="uaMonthSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:600;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+                <select class="cycle-year-picker" id="uaYearSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:600;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+                <span class="badge badge-score" id="uaUnitBadge">Plant Unit</span>
+              </div>
+              <span class="badge badge-evaluated" id="uaCycleBadge">October 2026</span>
+            </div>
+
             <!-- Unit Admin KPI Stats Grid -->
             <div class="stat-grid" id="uaKpiGrid">
               <div class="stat-card">
@@ -240,56 +319,220 @@ export default function Page() {
           </div>
 
           <!-- Team Leader View -->
-          <div id="homeTLView" class="hidden" style="margin-bottom:20px;">
+          <div id="homeTLView" class="hidden" style="margin-bottom:24px;">
+            <!-- Team Leader Assessment Cycle Selector Bar -->
+            <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span style="font-weight:700;font-size:12.5px;color:#1e2a63;text-transform:uppercase;letter-spacing:0.5px;">Assessment Cycle:</span>
+                <select class="cycle-month-picker" id="tlMonthSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:600;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+                <select class="cycle-year-picker" id="tlYearSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:600;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+                <span class="badge badge-score" id="tlUnitBadge">Plant Unit</span>
+              </div>
+              <span class="badge badge-evaluated" id="tlCycleBadge">October 2026</span>
+            </div>
+
             <!-- TL KPI Stats Grid -->
-            <div class="stat-grid" id="tlKpiGrid">
+            <div class="stat-grid" id="tlKpiGrid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));margin-bottom:20px;">
               <div class="stat-card">
                 <span class="stat-label">Assigned Team</span>
                 <span class="stat-num" id="tlKpiTotal">0</span>
-                <span class="stat-sub">Shop Floor Staff</span>
+                <span class="stat-sub">Mapped in Unit</span>
               </div>
               <div class="stat-card">
-                <span class="stat-label">Submissions</span>
+                <span class="stat-label">Reports Submitted</span>
                 <span class="stat-num" id="tlKpiSubmitted">0</span>
                 <span class="stat-sub" id="tlKpiSubRate">0% Submission</span>
               </div>
-              <div class="stat-card">
+              <div class="stat-card" style="border-left:3px solid #d97706;">
+                <span class="stat-label">Pending Assessments</span>
+                <span class="stat-num" id="tlKpiPending" style="color:#b45309;">0</span>
+                <span class="stat-sub" id="tlKpiPendingSub">Awaiting Rating</span>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #15803d;">
                 <span class="stat-label">Evaluations Done</span>
-                <span class="stat-num" id="tlKpiEvaluated">0</span>
+                <span class="stat-num" id="tlKpiEvaluated" style="color:#15803d;">0</span>
                 <span class="stat-sub" id="tlKpiEvalRate">0% Completed</span>
               </div>
               <div class="stat-card">
                 <span class="stat-label">Team Avg Score</span>
                 <span class="stat-num" id="tlKpiAvgScore">—</span>
-                <span class="stat-sub">1.0 - 10.0 Scale</span>
+                <span class="stat-sub">Scale 1.0 - 10.0</span>
               </div>
+            </div>
+
+            <!-- TL Assessment Tracking & Workflow Header -->
+            <div class="table-wrap">
+              <div class="table-header" style="flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 20px;">
+                <div>
+                  <div class="table-title" style="display:flex;align-items:center;gap:8px;">
+                    <span>Assigned Shop Floor Team Roster</span>
+                    <span class="badge badge-score" id="tlUnitBadgeTitle">October 2026</span>
+                  </div>
+                  <div style="font-size:12.5px;color:var(--ink-dim);margin-top:3px;">
+                    TL Workflow: Review Monthly Report → Give Rating/Marks (1-10) → Add Comments → Submit Assessment
+                  </div>
+                </div>
+                
+                <!-- Quick Search Input -->
+                <div style="min-width:240px;max-width:320px;flex:1;">
+                  <input type="text" id="tlHomeSearchInput" placeholder="Filter team member by Name or ID..." style="width:100%;padding:7px 12px;border:1px solid var(--panel-line);border-radius:6px;font-size:13px;background:#f8f9fd;">
+                </div>
+              </div>
+
+              <!-- TL Filter Tabs: All, Pending, Completed -->
+              <div style="display:flex;align-items:center;gap:8px;padding:10px 20px;background:#fcfdff;border-bottom:1px solid var(--panel-line);flex-wrap:wrap;">
+                <span style="font-size:11.5px;font-weight:700;text-transform:uppercase;color:var(--ink-dim);letter-spacing:0.5px;margin-right:4px;">Filter Assessments:</span>
+                <button type="button" class="dir-pill active" id="tlPillAll" data-tlfilter="all">
+                  All Mapped Members (<span id="tlCountAll">0</span>)
+                </button>
+                <button type="button" class="dir-pill" id="tlPillPending" data-tlfilter="pending" style="color:#b45309;">
+                  ⏳ Pending Assessments (<span id="tlCountPending">0</span>)
+                </button>
+                <button type="button" class="dir-pill" id="tlPillCompleted" data-tlfilter="completed" style="color:#15803d;">
+                  ✓ Completed Assessments (<span id="tlCountCompleted">0</span>)
+                </button>
+                <span style="margin-left:auto;font-size:12px;font-family:var(--font-mono);color:var(--ink-dim);" id="tlFilterSummaryBadge">Showing team members</span>
+              </div>
+
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Emp ID</th>
+                    <th>Employee Name</th>
+                    <th>Department</th>
+                    <th>Monthly Report</th>
+                    <th>Assessment Rating (1-10)</th>
+                    <th style="min-width:260px;">Team Leader Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tlAssignedHomeBody">
+                  <tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:20px;">Loading assigned employees…</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
+
           <!-- SGL Team View -->
-          <div id="homeSGLView" class="hidden" style="margin-bottom:20px;">
-            <!-- SGL KPI Stats Grid -->
-            <div class="stat-grid" id="sglKpiGrid">
+          <div id="homeSGLView" class="hidden" style="margin-bottom:24px;">
+            <!-- Historical Cycle / Month Selector & Console Bar -->
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:12px 18px;margin-bottom:18px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <span style="font-weight:700;font-size:13px;color:#1e2a63;text-transform:uppercase;letter-spacing:0.5px;">Assessment Cycle:</span>
+                <select class="cycle-month-picker" id="sglMonthSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:700;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+                <select class="cycle-year-picker" id="sglYearSelect" style="padding:5px 9px;border:1px solid var(--panel-line);border-radius:6px;font-weight:700;font-size:12.5px;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+                <span class="badge badge-score" id="sglUnitBadgeTitle">Gurugram Unit</span>
+                <span class="badge badge-evaluated" style="font-size:11px;">Group Supervision Active</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <button type="button" class="btn btn-sm btn-primary" id="btnGoHistoricalFromHome" style="font-weight:700;display:inline-flex;align-items:center;gap:6px;background:#1e2a63;color:#fff;border-radius:6px;padding:6px 14px;cursor:pointer;">
+                  <span>📅 Historical Records Archive</span> →
+                </button>
+                <span style="font-size:12px;color:var(--ink-dim);">🔒 TL Scores Locked (Audit Only)</span>
+              </div>
+            </div>
+
+            <!-- SGL KPI Stats Grid (5 Cards) -->
+            <div class="stat-grid" id="sglKpiGrid" style="grid-template-columns:repeat(auto-fit, minmax(175px, 1fr));margin-bottom:20px;">
               <div class="stat-card">
                 <span class="stat-label">Group Members</span>
                 <span class="stat-num" id="sglKpiTotal">0</span>
                 <span class="stat-sub">Under Supervision</span>
               </div>
               <div class="stat-card">
-                <span class="stat-label">Submissions</span>
+                <span class="stat-label">Reports Submitted</span>
                 <span class="stat-num" id="sglKpiSubmitted">0</span>
                 <span class="stat-sub" id="sglKpiSubRate">0% Submission</span>
               </div>
-              <div class="stat-card">
+              <div class="stat-card" style="border-left:3px solid #d97706;">
+                <span class="stat-label">Pending Assessments</span>
+                <span class="stat-num" id="sglKpiPending" style="color:#b45309;">0</span>
+                <span class="stat-sub" id="sglKpiPendingSub">Awaiting TL Rating</span>
+              </div>
+              <div class="stat-card" style="border-left:3px solid #15803d;">
                 <span class="stat-label">Evaluated by TL</span>
-                <span class="stat-num" id="sglKpiEvaluated">0</span>
+                <span class="stat-num" id="sglKpiEvaluated" style="color:#15803d;">0</span>
                 <span class="stat-sub" id="sglKpiEvalRate">0% Completed</span>
               </div>
               <div class="stat-card">
                 <span class="stat-label">Group Avg Score</span>
                 <span class="stat-num" id="sglKpiAvgScore">—</span>
-                <span class="stat-sub">1.0 - 10.0 Scale</span>
+                <span class="stat-sub">Scale 1.0 - 10.0</span>
               </div>
+            </div>
+
+            <!-- Team Performance Monitoring Breakdown Card -->
+            <div style="background:#fff;border:1px solid var(--panel-line);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+              <div>
+                <div style="font-weight:700;font-size:13.5px;color:#1e2a63;margin-bottom:3px;">Group Performance &amp; Evaluation Health</div>
+                <div style="font-size:12px;color:var(--ink-dim);" id="sglPerfSubtext">Monitoring score distribution and pending assessment completion for your unit.</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;" id="sglTierBadges">
+                <div style="background:#effcf6;border:1px solid #c2f0d9;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;color:#15803d;">
+                  Grade A (≥8.0): <span id="sglCountTierA">0</span>
+                </div>
+                <div style="background:#f0f5ff;border:1px solid #d0e1fd;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;color:#1e40af;">
+                  Grade B (6.0-7.9): <span id="sglCountTierB">0</span>
+                </div>
+                <div style="background:#fffbeb;border:1px solid #fee3a2;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;color:#b45309;">
+                  Needs Review (&lt;6.0): <span id="sglCountTierC">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SGL Assessment Audit Table & Filter Tabs -->
+            <div class="table-wrap">
+              <div class="table-header" style="flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 20px;">
+                <div>
+                  <div class="table-title" style="display:flex;align-items:center;gap:8px;">
+                    <span>Shop Floor Group Assessment Audit</span>
+                    <span class="badge badge-score" id="sglCycleBadgeTitle">October 2026</span>
+                  </div>
+                  <div style="font-size:12.5px;color:var(--ink-dim);margin-top:3px;">
+                    SGL Workflow: View Monthly Report → View TL Assessment &amp; Scores → Audit TL Comments → Verify Remarks
+                  </div>
+                </div>
+                
+                <!-- Quick Search Input -->
+                <div style="min-width:240px;max-width:320px;flex:1;">
+                  <input type="text" id="sglHomeSearchInput" placeholder="Filter staff by Name, ID, or TL..." style="width:100%;padding:7px 12px;border:1px solid var(--panel-line);border-radius:6px;font-size:13px;background:#f8f9fd;">
+                </div>
+              </div>
+
+              <!-- SGL Filter Tabs -->
+              <div style="display:flex;align-items:center;gap:8px;padding:10px 20px;background:#fcfdff;border-bottom:1px solid var(--panel-line);flex-wrap:wrap;">
+                <span style="font-size:11.5px;font-weight:700;text-transform:uppercase;color:var(--ink-dim);letter-spacing:0.5px;margin-right:4px;">Filter Group:</span>
+                <button type="button" class="dir-pill active" id="sglPillAll" data-sglfilter="all">
+                  All Group Staff (<span id="sglCountAll">0</span>)
+                </button>
+                <button type="button" class="dir-pill" id="sglPillPending" data-sglfilter="pending" style="color:#b45309;">
+                  ⏳ Pending TL Assessment (<span id="sglCountPending">0</span>)
+                </button>
+                <button type="button" class="dir-pill" id="sglPillEvaluated" data-sglfilter="evaluated" style="color:#15803d;">
+                  ✓ Evaluated by TL (<span id="sglCountEvaluated">0</span>)
+                </button>
+                <button type="button" class="dir-pill" id="sglPillNotSub" data-sglfilter="notsub" style="color:var(--ink-dim);">
+                  📄 Report Not Submitted (<span id="sglCountNotSub">0</span>)
+                </button>
+                <span style="margin-left:auto;font-size:12px;font-family:var(--font-mono);color:var(--ink-dim);" id="sglFilterSummaryBadge">Showing group staff</span>
+              </div>
+
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Emp ID</th>
+                    <th>Employee Name</th>
+                    <th>Assigned Team Leader</th>
+                    <th>Monthly Report</th>
+                    <th>TL Assessment &amp; Score</th>
+                    <th>TL Comments</th>
+                    <th style="min-width:230px;">SGL Audit Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sglTeamHomeBody">
+                  <tr><td colspan="7" style="text-align:center;color:var(--ink-dim);padding:20px;">Loading group assessment records…</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -329,16 +572,25 @@ export default function Page() {
         </div>
 
         <!-- Inbox Toolbar -->
-        <div class="inbox-toolbar">
-          <div class="inbox-search-wrap">
-            <input type="text" id="inboxSearchInput" placeholder="Filter submissions by Name, ID, or Unit...">
+        <div class="inbox-toolbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:280px;flex-wrap:wrap;">
+            <div class="inbox-search-wrap" style="flex:1;min-width:200px;">
+              <input type="text" id="inboxSearchInput" placeholder="Filter submissions by Name, ID, or Unit...">
+            </div>
+            <div class="inbox-filters" id="inboxFilters">
+              <button class="inbox-pill active" data-filter="all">All Submissions</button>
+              <button class="inbox-pill" data-filter="pending">Awaiting Evaluation</button>
+              <button class="inbox-pill" data-filter="evaluated">Evaluated</button>
+            </div>
           </div>
-          <div class="inbox-filters" id="inboxFilters">
-            <button class="inbox-pill active" data-filter="all">All Submissions</button>
-            <button class="inbox-pill" data-filter="pending">Awaiting Evaluation</button>
-            <button class="inbox-pill" data-filter="evaluated">Evaluated</button>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;background:#f8f9fd;border:1px solid var(--panel-line);border-radius:6px;padding:4px 9px;">
+              <span style="font-size:11px;font-weight:700;color:#1e2a63;text-transform:uppercase;">Cycle:</span>
+              <select class="cycle-month-picker" id="inboxMonthSelect" style="padding:3px 6px;border:1px solid var(--panel-line);border-radius:5px;font-size:12px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+              <select class="cycle-year-picker" id="inboxYearSelect" style="padding:3px 6px;border:1px solid var(--panel-line);border-radius:5px;font-size:12px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+            </div>
+            <span class="inbox-count-badge" id="inboxCountBadge">Showing entries</span>
           </div>
-          <span class="inbox-count-badge" id="inboxCountBadge">Showing entries</span>
         </div>
 
         <!-- Submissions List Container -->
@@ -357,8 +609,8 @@ export default function Page() {
 
         <!-- Directory Toolbar -->
         <div class="dir-toolbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:280px;">
-            <div class="dir-search-wrap" style="flex:1;">
+          <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:280px;flex-wrap:wrap;">
+            <div class="dir-search-wrap" style="flex:1;min-width:180px;">
               <input type="text" id="dirSearchInput" placeholder="Filter by Name, ID, or Unit...">
             </div>
             <div class="dir-filters" id="dirFilters">
@@ -369,7 +621,12 @@ export default function Page() {
               <button class="dir-pill" data-filter="deactivated">Deactivated</button>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;background:#f8f9fd;border:1px solid var(--panel-line);border-radius:6px;padding:4px 9px;">
+              <span style="font-size:11px;font-weight:700;color:#1e2a63;text-transform:uppercase;">Cycle:</span>
+              <select class="cycle-month-picker" id="dirMonthSelect" style="padding:3px 6px;border:1px solid var(--panel-line);border-radius:5px;font-size:12px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+              <select class="cycle-year-picker" id="dirYearSelect" style="padding:3px 6px;border:1px solid var(--panel-line);border-radius:5px;font-size:12px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+            </div>
             <span class="dir-count" id="dirCountBadge" style="margin-right:4px;">Showing staff</span>
             <button type="button" class="btn btn-sm btn-primary" id="btnDirAddUser">Add User</button>
             <button type="button" class="btn btn-sm btn-ghost" id="btnDirExportCsv">Export CSV</button>
@@ -388,7 +645,7 @@ export default function Page() {
                   <th>Emp ID</th>
                   <th>Name</th>
                   <th>Role</th>
-                  <th>Team Leader</th>
+                  <th>Supervisors (TL / SGL)</th>
                   <th>Status</th>
                   <th>Score</th>
                   <th>Action</th>
@@ -424,21 +681,33 @@ export default function Page() {
         <!-- SGL Group Roster Table -->
         <div id="dirSGLView" class="hidden">
           <div class="table-wrap">
-            <div class="table-header">
-              <div class="table-title">Group Overview & Assessment Audit</div>
+            <div class="table-header" style="flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 20px;">
+              <div>
+                <div class="table-title">Supervised Group Roster &amp; TL Assessment Audit</div>
+                <div style="font-size:12.5px;color:var(--ink-dim);margin-top:3px;">
+                  Group staff within your plant unit. Audit TL assessments, examine scores and feedback, and inspect monthly reports.
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-primary" id="btnDirGoHistorical" style="background:#1e2a63;color:#fff;font-weight:700;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                <span>📅 Historical Records Archive</span> →
+              </button>
             </div>
             <table class="data-table">
               <thead>
                 <tr>
                   <th>Emp ID</th>
                   <th>Employee Name</th>
-                  <th>Team Leader</th>
-                  <th>Status</th>
-                  <th>TL Score (1-10)</th>
-                  <th>Review</th>
+                  <th>Role / Dept</th>
+                  <th>Assigned TL</th>
+                  <th>Monthly Report</th>
+                  <th>TL Assessment &amp; Score</th>
+                  <th>TL Comments</th>
+                  <th style="min-width:220px;">Audit Actions</th>
                 </tr>
               </thead>
-              <tbody id="sglTeamBody"></tbody>
+              <tbody id="sglTeamBody">
+                <tr><td colspan="8" style="text-align:center;color:var(--ink-dim);padding:20px;">Loading group staff…</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -469,6 +738,135 @@ export default function Page() {
         </div>
 
         <button class="btn btn-ghost" id="dirBackBtn" style="margin-top:20px;">Back to Dashboard</button>
+      </div>
+    </section>
+
+    <!-- DEDICATED SCREEN: HISTORICAL RECORDS ARCHIVE -->
+    <section id="screen-historical" class="hidden">
+      <div class="menu-wrap" style="max-width:1120px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+          <div>
+            <div class="eyebrow">Audit &amp; Archives</div>
+            <h1>Historical Assessment Records</h1>
+            <p class="menu-lead">Browse prior assessment cycles, audit past Team Leader evaluation scores, review TL comments, and inspect employee monthly reports.</p>
+          </div>
+          <button type="button" class="btn btn-ghost" id="histBackBtn">← Back to Dashboard</button>
+        </div>
+
+        <!-- Historical Cycle Selector Bar -->
+        <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:16px 20px;margin:20px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+          <div>
+            <div style="font-size:11.5px;font-weight:700;text-transform:uppercase;color:var(--ink-dim);letter-spacing:0.5px;margin-bottom:8px;">Select Assessment Cycle / Month:</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;" id="histCyclePills">
+              <button type="button" class="dir-pill active" data-cycle="2026-10">October 2026 (Active)</button>
+              <button type="button" class="dir-pill" data-cycle="2026-09">September 2026</button>
+              <button type="button" class="dir-pill" data-cycle="2026-08">August 2026</button>
+              <button type="button" class="dir-pill" data-cycle="2026-07">July 2026</button>
+              <button type="button" class="dir-pill" data-cycle="2026-06">June 2026</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+              <span style="font-size:11.5px;font-weight:700;color:#1e2a63;text-transform:uppercase;">Or Custom Month &amp; Year:</span>
+              <select class="cycle-month-picker" id="histMonthSelect" style="padding:4px 8px;border:1px solid var(--panel-line);border-radius:6px;font-size:12px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+              <select class="cycle-year-picker" id="histYearSelect" style="padding:4px 8px;border:1px solid var(--panel-line);border-radius:6px;font-size:12px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="badge badge-score" id="histUnitBadge">Plant Unit</span>
+            <span class="badge badge-evaluated" id="histActiveCycleBadge">Cycle: October 2026</span>
+          </div>
+        </div>
+
+        <!-- Historical Cycle Performance Summary (5 KPI Cards) -->
+        <div class="stat-grid" id="histKpiGrid" style="grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));margin-bottom:20px;">
+          <div class="stat-card">
+            <span class="stat-label">Group Workforce</span>
+            <span class="stat-num" id="histKpiTotal">0</span>
+            <span class="stat-sub">Mapped in Cycle</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Reports Submitted</span>
+            <span class="stat-num" id="histKpiSubmitted">0</span>
+            <span class="stat-sub" id="histKpiSubRate">0% Submission</span>
+          </div>
+          <div class="stat-card" style="border-left:3px solid #d97706;">
+            <span class="stat-label">Pending TL Rating</span>
+            <span class="stat-num" id="histKpiPending" style="color:#b45309;">0</span>
+            <span class="stat-sub">Awaiting Evaluation</span>
+          </div>
+          <div class="stat-card" style="border-left:3px solid #15803d;">
+            <span class="stat-label">Evaluated by TL</span>
+            <span class="stat-num" id="histKpiEvaluated" style="color:#15803d;">0</span>
+            <span class="stat-sub" id="histKpiEvalRate">0% Completed</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Cycle Avg Score</span>
+            <span class="stat-num" id="histKpiAvgScore">—</span>
+            <span class="stat-sub">Scale 1.0 - 10.0</span>
+          </div>
+        </div>
+
+        <!-- Historical Performance Tier Breakdown -->
+        <div style="background:#fff;border:1px solid var(--panel-line);border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+          <div style="font-size:13px;font-weight:700;color:#1e2a63;">Cycle Performance Tier Breakdown:</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <span style="background:#effcf6;border:1px solid #c2f0d9;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;color:#15803d;">
+              Grade A (≥8.0): <strong id="histTierA">0</strong>
+            </span>
+            <span style="background:#f0f5ff;border:1px solid #d0e1fd;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;color:#1e40af;">
+              Grade B (6.0-7.9): <strong id="histTierB">0</strong>
+            </span>
+            <span style="background:#fffbeb;border:1px solid #fee3a2;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;color:#b45309;">
+              Needs Review (&lt;6.0): <strong id="histTierC">0</strong>
+            </span>
+          </div>
+        </div>
+
+        <!-- Historical Records Table Container -->
+        <div class="table-wrap">
+          <div class="table-header" style="flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 20px;">
+            <div>
+              <div class="table-title" style="display:flex;align-items:center;gap:8px;">
+                <span>Archived Group Assessment Records</span>
+                <span class="badge badge-score" id="histTableTitleCycle">October 2026</span>
+              </div>
+              <div style="font-size:12.5px;color:var(--ink-dim);margin-top:3px;">
+                Audit submitted monthly reports, historical TL assessment scores, feedback comments, and SGL verification notes.
+              </div>
+            </div>
+            
+            <div style="min-width:240px;max-width:320px;flex:1;">
+              <input type="text" id="histSearchInput" placeholder="Filter historical record by Name, ID, or TL..." style="width:100%;padding:7px 12px;border:1px solid var(--panel-line);border-radius:6px;font-size:13px;background:#f8f9fd;">
+            </div>
+          </div>
+
+          <!-- Filter Pills -->
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 20px;background:#fcfdff;border-bottom:1px solid var(--panel-line);flex-wrap:wrap;">
+            <span style="font-size:11.5px;font-weight:700;text-transform:uppercase;color:var(--ink-dim);letter-spacing:0.5px;margin-right:4px;">Filter:</span>
+            <button type="button" class="dir-pill active" id="histPillAll" data-histfilter="all">All Group Staff (<span id="histCountAll">0</span>)</button>
+            <button type="button" class="dir-pill" id="histPillEvaluated" data-histfilter="evaluated" style="color:#15803d;">✓ Evaluated (<span id="histCountEvaluated">0</span>)</button>
+            <button type="button" class="dir-pill" id="histPillPending" data-histfilter="pending" style="color:#b45309;">⏳ Pending Rating (<span id="histCountPending">0</span>)</button>
+            <button type="button" class="dir-pill" id="histPillNotSub" data-histfilter="notsub" style="color:var(--ink-dim);">📄 Not Submitted (<span id="histCountNotSub">0</span>)</button>
+            <span style="margin-left:auto;font-size:12px;font-family:var(--font-mono);color:var(--ink-dim);" id="histFilterSummaryBadge">Showing records</span>
+          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Emp ID</th>
+                <th>Employee Name</th>
+                <th>Role / Dept</th>
+                <th>Assigned TL</th>
+                <th>Monthly Report</th>
+                <th>TL Assessment &amp; Score</th>
+                <th>TL Comments</th>
+                <th style="min-width:230px;">Audit Actions</th>
+              </tr>
+            </thead>
+            <tbody id="histRecordsBody">
+              <tr><td colspan="8" style="text-align:center;color:var(--ink-dim);padding:24px;">Loading historical assessment records…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -621,12 +1019,16 @@ export default function Page() {
         <h1>Growth Performance Sections</h1>
         <p class="menu-lead">Choose any section below to view/edit, or use the direct components in the sidebar.</p>
 
-        <div class="submit-box hidden" id="submitBox">
+        <div class="submit-box hidden" id="submitBox" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
           <div>
-            <div class="sb-title">Submit this month to your supervisor</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+              <span class="sb-title" style="margin:0;">Select Assessment Month &amp; Year:</span>
+              <select class="cycle-month-picker" id="empMenuMonthSelect" style="padding:4px 8px;border:1px solid var(--panel-line);border-radius:6px;font-size:12.5px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+              <select class="cycle-year-picker" id="empMenuYearSelect" style="padding:4px 8px;border:1px solid var(--panel-line);border-radius:6px;font-size:12.5px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+            </div>
             <div class="sb-status" id="submitStatus">Not submitted yet for <span id="submitMonthLabel"></span></div>
           </div>
-          <button class="btn btn-primary" id="submitBtn">Submit This Month</button>
+          <button class="btn btn-primary" id="submitBtn">Submit Passport for This Month</button>
         </div>
 
         <select id="sheetDropdown" class="hidden"></select>
@@ -642,7 +1044,14 @@ export default function Page() {
       <div class="form-wrap">
         <div class="form-top">
           <div>
-            <div class="crumb" id="formCrumb">Growth Performance</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div class="crumb" id="formCrumb">Growth Performance</div>
+              <span class="badge badge-evaluated" id="formCycleBadge" style="font-size:11px;">Cycle: October 2026</span>
+              <div style="display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
+                <select class="cycle-month-picker" id="formMonthSelect" style="padding:2px 6px;border:1px solid var(--panel-line);border-radius:4px;font-size:11px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+                <select class="cycle-year-picker" id="formYearSelect" style="padding:2px 6px;border:1px solid var(--panel-line);border-radius:4px;font-size:11px;font-weight:600;background:#fff;color:#1e2a63;cursor:pointer;"></select>
+              </div>
+            </div>
             <h1 id="formTitle">Section</h1>
           </div>
           <div class="form-actions">
@@ -709,6 +1118,92 @@ export default function Page() {
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
       <button type="button" class="btn btn-ghost" id="evalCancelBtn">Cancel</button>
       <button type="button" class="btn btn-primary" id="evalSubmitBtn">Submit Assessment</button>
+    </div>
+  </div>
+</div>
+
+<!-- SGL Audit & Verification Modal (Read-Only TL Ratings with Verification Sign-Off) -->
+<div id="sglAuditModal" class="modal-backdrop hidden">
+  <div class="modal-card" style="max-width:620px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+      <div>
+        <h2 id="sglAuditModalTitle" style="margin:0;">Audit TL Assessment</h2>
+        <div class="modal-sub" id="sglAuditModalSub">Senior Group Leader Performance Audit &amp; Sign-Off</div>
+      </div>
+      <button type="button" class="btn btn-sm btn-ghost" id="sglAuditCloseX">✕</button>
+    </div>
+
+    <!-- Security notice: SGL cannot modify submitted TL ratings -->
+    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:16px;">🔒</span>
+      <div style="font-size:12px;color:#92400e;line-height:1.4;">
+        <strong>SGL Audit Mode:</strong> Submitted Team Leader ratings and criteria scores are locked for audit integrity and cannot be modified by SGL unless specifically authorized.
+      </div>
+    </div>
+
+    <!-- TL Assessment Score Hero -->
+    <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:16px;margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:13px;font-weight:700;color:#1e2a63;text-transform:uppercase;letter-spacing:0.5px;">Team Leader Official Rating:</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:24px;font-weight:800;color:#1e2a63;font-family:var(--font-mono);" id="sglAuditScoreVal">8.5</span>
+          <span style="font-size:14px;font-weight:700;color:var(--ink-dim);">/ 10.0</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <span class="badge badge-evaluated" id="sglAuditGradeBadge" style="font-size:12px;padding:4px 10px;">Grade A (Outstanding)</span>
+        <span style="font-size:12px;color:var(--ink-dim);" id="sglAuditEvaluatorMeta">Evaluated by Team Leader</span>
+      </div>
+    </div>
+
+    <!-- Read-Only Criteria Breakdown -->
+    <div style="margin-bottom:18px;">
+      <div style="font-size:11.5px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Evaluated Criteria Breakdown (1.0 - 10.0)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12.5px;font-weight:600;color:#334155;">1. Safety &amp; 5S Discipline</span>
+          <span class="badge badge-score" id="sglCritSafety">8.5</span>
+        </div>
+        <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12.5px;font-weight:600;color:#334155;">2. Quality &amp; Zero Defects</span>
+          <span class="badge badge-score" id="sglCritQuality">8.5</span>
+        </div>
+        <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12.5px;font-weight:600;color:#334155;">3. Productivity &amp; Output</span>
+          <span class="badge badge-score" id="sglCritProd">8.5</span>
+        </div>
+        <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12.5px;font-weight:600;color:#334155;">4. Attendance &amp; Punctuality</span>
+          <span class="badge badge-score" id="sglCritAttend">9.0</span>
+        </div>
+        <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;grid-column:span 2;">
+          <span style="font-size:12.5px;font-weight:600;color:#334155;">5. Kaizen &amp; Continuous Improvements</span>
+          <span class="badge badge-score" id="sglCritKaizen">8.0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Official TL Comments (Read-Only) -->
+    <div style="margin-bottom:18px;">
+      <div style="font-size:11.5px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Team Leader Comments &amp; Feedback</div>
+      <div style="background:#f8f9fd;border-left:3px solid #1e2a63;border-radius:4px 8px 8px 4px;padding:12px 16px;font-size:13.5px;color:#1e293b;line-height:1.5;font-style:italic;" id="sglAuditTLCommentsText">
+        "No specific comments recorded by Team Leader."
+      </div>
+    </div>
+
+    <!-- SGL Verification Remarks & Sign-Off -->
+    <div class="field-block" style="margin-bottom:20px;">
+      <label class="f" for="sglAuditRemarksInput">SGL Verification Notes &amp; Audit Sign-Off</label>
+      <textarea id="sglAuditRemarksInput" rows="3" placeholder="Enter Senior Group Leader verification remarks, audit observations, or approval notes..."></textarea>
+      <div class="small-note">Recorded under your SGL credential without mutating the Team Leader's scores.</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <button type="button" class="btn btn-ghost" id="sglAuditOpenReportBtn">Open Monthly Report (Sheets 1-9)</button>
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="btn btn-ghost" id="sglAuditCancelBtn">Close</button>
+        <button type="button" class="btn btn-primary" id="sglAuditSaveRemarksBtn">Save SGL Sign-Off</button>
+      </div>
     </div>
   </div>
 </div>
@@ -871,6 +1366,62 @@ export default function Page() {
     <div style="display:flex;justify-content:flex-end;">
       <button type="button" class="btn btn-ghost" id="cycleCloseBtn">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- Plant / Unit Management Modal (Super Admin Only) -->
+<div id="unitMgmtModal" class="modal-backdrop hidden">
+  <div class="modal-card" style="max-width:580px;width:95%;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <h2 id="unitMgmtTitle" style="margin:0;display:flex;align-items:center;gap:8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+        <span>Plant / Unit Management</span>
+      </h2>
+      <button type="button" class="btn btn-sm btn-ghost" id="unitMgmtCloseX">Close</button>
+    </div>
+    <div class="modal-sub">Super Admin Console · Modify plant unit names and operational codes. Password verification is strictly required.</div>
+
+    <!-- Active Units List -->
+    <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:8px;padding:12px;margin-bottom:16px;">
+      <div style="font-size:12px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);margin-bottom:8px;text-transform:uppercase;">Registered Plant Units</div>
+      <div id="unitMgmtList" style="display:flex;flex-direction:column;gap:6px;">
+        <div style="color:var(--ink-dim);font-size:12px;">Loading units…</div>
+      </div>
+    </div>
+
+    <!-- Edit Form -->
+    <form id="unitMgmtForm" onsubmit="return false;" style="background:#fff;border:1px solid var(--panel-line);border-radius:10px;padding:16px;">
+      <div style="font-weight:700;font-size:13.5px;color:var(--mahle-blue);margin-bottom:12px;" id="unitEditFormTitle">Select a plant above or modify below</div>
+      
+      <input type="hidden" id="unitEditId" value="">
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px;">
+        <div class="field-block">
+          <label class="f" for="unitEditName">Unit / Plant Name *</label>
+          <input type="text" id="unitEditName" placeholder="e.g. Gurugram Plant" required style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;font-weight:600;">
+        </div>
+        <div class="field-block">
+          <label class="f" for="unitEditCode">Plant Code</label>
+          <input type="text" id="unitEditCode" placeholder="e.g. GGN, U02" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;font-family:var(--font-mono);font-weight:700;">
+        </div>
+      </div>
+
+      <!-- Password Confirmation Block -->
+      <div style="background:#fff9eb;border:1px solid #fedc77;border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+        <label class="f" for="unitEditPassword" style="color:#854d0e;font-weight:700;display:flex;align-items:center;gap:6px;">
+          <span>🔒 Super Admin Passcode Verification *</span>
+        </label>
+        <input type="password" id="unitEditPassword" placeholder="Enter your current password to authorize" autocomplete="current-password" required style="width:100%;padding:8px 10px;border:1px solid #facc15;border-radius:6px;background:#fff;margin-top:4px;">
+        <div style="font-size:11.5px;color:#854d0e;margin-top:4px;">Security checkpoint: Re-enter your Super Admin account password to authorize changing this plant unit.</div>
+      </div>
+
+      <div class="lookup-error hidden" id="unitEditError" style="margin-bottom:12px;"></div>
+
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;">
+        <button type="button" class="btn btn-ghost" id="unitEditCancelBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="unitEditSaveBtn">Authorize &amp; Rename Unit</button>
+      </div>
+    </form>
   </div>
 </div>
 

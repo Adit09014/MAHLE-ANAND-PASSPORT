@@ -179,11 +179,24 @@ const store = {
     }
   },
 
-  /* ---------------- units & departments ---------------- */
   async listUnits() {
     const pool = await getPool();
     const res = await pool.request().query('SELECT id, name, code, isActive FROM [Unit] ORDER BY name');
     return res.recordset;
+  },
+
+  async updateUnit(id: string, name: string, code?: string) {
+    const pool = await getPool();
+    await pool.request()
+      .input('id', sql.NVarChar, id)
+      .input('name', sql.NVarChar, name.trim())
+      .input('code', sql.NVarChar, code ? code.trim().toUpperCase() : null)
+      .query(`
+        UPDATE [Unit]
+        SET name = @name,
+            code = CASE WHEN @code IS NOT NULL AND LEN(@code) > 0 THEN @code ELSE code END
+        WHERE id = @id
+      `);
   },
 
   async listDepartments(unitId?: string) {
@@ -200,68 +213,113 @@ const store = {
   },
 
   /* ---------------- hierarchy & assigned employees ---------------- */
-  async getAssignedEmployeesForTL(tlUserId: string, month = '2026-10') {
+  async getAssignedEmployeesForTL(tlUserId: string, month = '2026-10', unitId?: string | null, tlEmpCode?: string | null) {
     const pool = await getPool();
-    const res = await pool.request()
+    const request = pool.request()
       .input('tlId', sql.NVarChar, tlUserId)
-      .input('month', sql.NVarChar, month)
-      .query(`
-        SELECT 
-          u.id,
-          u.empCode,
-          u.name,
-          un.name AS unitName,
-          d.name AS departmentName,
-          m.id AS submissionId,
-          ISNULL(m.status, 'not_started') AS submissionStatus,
-          m.selfScore,
-          m.submittedAt,
-          ar.score AS tlScore,
-          ar.ratingGrade,
-          ar.tlComments,
-          ar.reviewedAt
-        FROM [User] u
-        LEFT JOIN [Unit] un ON u.unitId = un.id
-        LEFT JOIN [Department] d ON u.departmentId = d.id
-        LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
-        LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
-        WHERE u.tlId = @tlId AND u.isActive = 1
-        ORDER BY u.empCode
-      `);
+      .input('tlEmpCode', sql.NVarChar, tlEmpCode || tlUserId)
+      .input('month', sql.NVarChar, month);
+
+    let query = `
+      SELECT 
+        u.id,
+        u.empCode,
+        u.name,
+        u.unitId,
+        un.name AS unitName,
+        d.name AS departmentName,
+        m.id AS submissionId,
+        ISNULL(m.status, 'not_started') AS submissionStatus,
+        m.selfScore,
+        m.submittedAt,
+        ar.score AS tlScore,
+        ar.ratingGrade,
+        ar.tlComments,
+        ar.criteriaScores,
+        ar.reviewedAt
+      FROM [User] u
+      LEFT JOIN [Unit] un ON u.unitId = un.id
+      LEFT JOIN [Department] d ON u.departmentId = d.id
+      LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
+      LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
+      WHERE (u.tlId = @tlId OR u.tlId = @tlEmpCode) AND u.isActive = 1
+    `;
+
+    if (unitId) {
+      request.input('unitId', sql.NVarChar, unitId);
+      query += ` AND u.unitId = @unitId`;
+    }
+
+    query += ` ORDER BY u.empCode`;
+    const res = await request.query(query);
     return res.recordset;
   },
 
-  async getTeamForSGL(sglUserId: string, month = '2026-10') {
+  async getTeamForSGL(sglUserId: string, month = '2026-10', unitId?: string | null, sglEmpCode?: string | null, isAllForAdmin = false) {
     const pool = await getPool();
-    const res = await pool.request()
+    const request = pool.request()
       .input('sglId', sql.NVarChar, sglUserId)
-      .input('month', sql.NVarChar, month)
-      .query(`
-        SELECT 
-          u.id,
-          u.empCode,
-          u.name,
-          tl.name AS tlName,
-          un.name AS unitName,
-          d.name AS departmentName,
-          m.id AS submissionId,
-          ISNULL(m.status, 'not_started') AS submissionStatus,
-          m.selfScore,
-          ar.score AS tlScore,
-          ar.ratingGrade,
-          ar.tlComments,
-          ar.sglRemarks,
-          ar.reviewedAt
-        FROM [User] u
-        LEFT JOIN [User] tl ON u.tlId = tl.id
-        LEFT JOIN [Unit] un ON u.unitId = un.id
-        LEFT JOIN [Department] d ON u.departmentId = d.id
-        LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
-        LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
-        WHERE u.sglId = @sglId AND u.isActive = 1
-        ORDER BY tl.name, u.empCode
-      `);
-    return res.recordset;
+      .input('sglEmpCode', sql.NVarChar, sglEmpCode || sglUserId)
+      .input('month', sql.NVarChar, month);
+
+    let query = `
+      SELECT 
+        u.id,
+        u.empCode,
+        u.name,
+        r.name AS roleName,
+        tl.name AS tlName,
+        un.name AS unitName,
+        d.name AS departmentName,
+        m.id AS submissionId,
+        m.month,
+        ISNULL(m.status, 'not_started') AS submissionStatus,
+        m.selfScore,
+        m.submittedAt,
+        ar.score AS tlScore,
+        ar.ratingGrade,
+        ar.criteriaScores,
+        ar.tlComments,
+        ar.sglRemarks,
+        ar.reviewedAt,
+        evaluator.name AS evaluatorName
+      FROM [User] u
+      LEFT JOIN [Role] r ON u.roleId = r.id
+      LEFT JOIN [User] tl ON u.tlId = tl.id
+      LEFT JOIN [Unit] un ON u.unitId = un.id
+      LEFT JOIN [Department] d ON u.departmentId = d.id
+      LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
+      LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
+      LEFT JOIN [User] evaluator ON ar.evaluatorId = evaluator.id
+      WHERE u.isActive = 1 AND r.name = 'Shop Floor Employee'
+    `;
+
+    if (!isAllForAdmin) {
+      query += ` AND (u.sglId = @sglId OR u.sglId = @sglEmpCode)`;
+    }
+
+    if (unitId) {
+      request.input('unitId', sql.NVarChar, unitId);
+      query += ` AND u.unitId = @unitId`;
+    }
+
+    query += ` ORDER BY tl.name, u.empCode`;
+    const res = await request.query(query);
+
+    return res.recordset.map((row: any) => {
+      let parsedCrit = null;
+      if (row.criteriaScores) {
+        try {
+          parsedCrit = typeof row.criteriaScores === 'string' ? JSON.parse(row.criteriaScores) : row.criteriaScores;
+        } catch (e) {
+          parsedCrit = null;
+        }
+      }
+      return {
+        ...row,
+        criteriaScores: parsedCrit,
+      };
+    });
   },
 
   async getEmployeesByUnit(unitId: string, month = '2026-10') {
@@ -274,6 +332,11 @@ const store = {
           u.id,
           u.empCode,
           u.name,
+          u.unitId,
+          u.tlId,
+          u.sglId,
+          u.departmentId,
+          u.isActive,
           r.name AS roleName,
           tl.name AS tlName,
           sgl.name AS sglName,
@@ -462,8 +525,8 @@ const store = {
     `;
 
     if (!isGlobal) {
-      reqKpi.input('unitFilter', sql.NVarChar, unitFilter);
-      kpiSql += ` AND (u.unitId = @unitFilter OR u.unitId IN (SELECT id FROM [Unit] WHERE name = @unitFilter))`;
+      reqKpi.input('unitFilter', sql.NVarChar, unitFilter.trim());
+      kpiSql += ` AND (u.unitId = @unitFilter OR u.unitId IN (SELECT id FROM [Unit] WHERE LOWER(LTRIM(RTRIM(name))) = LOWER(LTRIM(RTRIM(@unitFilter))) OR id = @unitFilter))`;
     }
 
     const kpiRes = await reqKpi.query(kpiSql);
@@ -504,11 +567,38 @@ const store = {
       LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
     `;
     if (!isGlobal) {
-      deptReq.input('unitFilter', sql.NVarChar, unitFilter);
-      deptSql += ` WHERE d.unitId = @unitFilter OR d.unitId IN (SELECT id FROM [Unit] WHERE name = @unitFilter)`;
+      deptReq.input('unitFilter', sql.NVarChar, unitFilter.trim());
+      deptSql += ` WHERE d.unitId = @unitFilter OR d.unitId IN (SELECT id FROM [Unit] WHERE LOWER(LTRIM(RTRIM(name))) = LOWER(LTRIM(RTRIM(@unitFilter))) OR id = @unitFilter)`;
     }
     deptSql += ` GROUP BY d.name ORDER BY d.name`;
     const deptRes = await deptReq.query(deptSql);
+
+    // SGL / Team Performance Breakdown
+    const sglReq = pool.request().input('month', sql.NVarChar, month);
+    let sglSql = `
+      SELECT 
+        sgl.id AS sglId,
+        sgl.name AS sglName,
+        sgl.empCode AS sglEmpCode,
+        un.name AS unitName,
+        COUNT(DISTINCT u.id) AS totalEmployees,
+        COUNT(DISTINCT CASE WHEN m.status IN ('submitted', 'evaluated') THEN m.id END) AS submittedCount,
+        COUNT(DISTINCT CASE WHEN m.status = 'evaluated' THEN m.id END) AS evaluatedCount,
+        ROUND(AVG(ar.score), 2) AS avgScore
+      FROM [User] sgl
+      JOIN [Role] sr ON sgl.roleId = sr.id AND sr.name = 'Senior Group Leader (SGL)'
+      LEFT JOIN [Unit] un ON sgl.unitId = un.id
+      LEFT JOIN [User] u ON (u.sglId = sgl.id OR u.sglId = sgl.empCode) AND u.isActive = 1 AND u.roleId IN (SELECT id FROM [Role] WHERE name = 'Shop Floor Employee')
+      LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
+      LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
+      WHERE sgl.isActive = 1
+    `;
+    if (!isGlobal) {
+      sglReq.input('unitFilter', sql.NVarChar, unitFilter.trim());
+      sglSql += ` AND (sgl.unitId = @unitFilter OR sgl.unitId IN (SELECT id FROM [Unit] WHERE LOWER(LTRIM(RTRIM(name))) = LOWER(LTRIM(RTRIM(@unitFilter))) OR id = @unitFilter))`;
+    }
+    sglSql += ` GROUP BY sgl.id, sgl.name, sgl.empCode, un.name ORDER BY un.name, sgl.name`;
+    const sglRes = await sglReq.query(sglSql);
 
     return {
       kpi: {
@@ -522,15 +612,43 @@ const store = {
       },
       units: unitRes.recordset,
       departments: deptRes.recordset,
+      teams: sglRes.recordset,
     };
   },
 
-  /* ---------------- legacy sheet data support ---------------- */
-  async getSheetData(empCode: string, sheetId: string) {
+  /* ---------------- sheet data support (permanent, yearly, monthly lifecycle) ---------------- */
+  resolveSheetStorageKey(sheetId: string, cycle: string = '2026-10'): { storageKey: string, fallbackKey?: string } {
+    const parts = String(cycle || '2026-10').trim().split('-');
+    const year = parts[0] || '2026';
+    const month = parts[1] || '10';
+
+    // 1. About Myself: Permanent master profile record across all months and years (never resets)
+    if (sheetId === 'frontpage') {
+      return { storageKey: 'frontpage' };
+    }
+
+    // 2. SWOT Analysis: Resets every month (must be filled every month)
+    if (sheetId === 'swot') {
+      const monthlyKey = `swot_${year}_${month}`;
+      const fallback = (year === '2026' && month === '10') ? 'swot' : undefined;
+      return { storageKey: monthlyKey, fallbackKey: fallback };
+    }
+
+    // 3. All other sheets (lineperf, attendance, iip, training, keylearning, activities, selfdev, supervisor):
+    // Saved across every month of the given year, resets yearly on year change
+    const yearlyKey = `${sheetId}_${year}`;
+    const fallback = (year === '2026') ? sheetId : undefined;
+    return { storageKey: yearlyKey, fallbackKey: fallback };
+  },
+
+  async getSheetData(empCode: string, sheetId: string, cycle: string = '2026-10') {
+    const { storageKey, fallbackKey } = this.resolveSheetStorageKey(sheetId, cycle);
     const pool = await getPool();
+
+    // 1. Try primary storageKey
     const res = await pool.request()
       .input('empCode', sql.NVarChar, empCode)
-      .input('sheetId', sql.NVarChar, sheetId)
+      .input('sheetId', sql.NVarChar, storageKey)
       .query(`
         SELECT s.data 
         FROM [SheetData] s
@@ -538,38 +656,71 @@ const store = {
         WHERE u.empCode = @empCode AND s.sheetId = @sheetId
       `);
 
-    if (res.recordset.length === 0) return null;
-    try {
-      return JSON.parse(res.recordset[0].data);
-    } catch {
-      return null;
+    if (res.recordset.length > 0) {
+      try { return JSON.parse(res.recordset[0].data); } catch { return null; }
     }
+
+    // 2. Fallback to legacy unadorned key if applicable for baseline
+    if (fallbackKey && fallbackKey !== storageKey) {
+      const fbRes = await pool.request()
+        .input('empCode', sql.NVarChar, empCode)
+        .input('sheetId', sql.NVarChar, fallbackKey)
+        .query(`
+          SELECT s.data 
+          FROM [SheetData] s
+          JOIN [User] u ON s.empId = u.id
+          WHERE u.empCode = @empCode AND s.sheetId = @sheetId
+        `);
+
+      if (fbRes.recordset.length > 0) {
+        try { return JSON.parse(fbRes.recordset[0].data); } catch { return null; }
+      }
+    }
+
+    return null;
   },
 
-  async setSheetData(empCode: string, sheetId: string, sheetContent: any) {
+  async setSheetData(empCode: string, sheetId: string, sheetContent: any, cycle: string = '2026-10') {
+    const { storageKey, fallbackKey } = this.resolveSheetStorageKey(sheetId, cycle);
     const userId = await getOrCreateUserId(empCode, 'Shop Floor Employee');
     const pool = await getPool();
     const dataStr = JSON.stringify(sheetContent);
 
+    // Upsert primary storageKey
     const existing = await pool.request()
       .input('empId', sql.NVarChar, userId)
-      .input('sheetId', sql.NVarChar, sheetId)
+      .input('sheetId', sql.NVarChar, storageKey)
       .query('SELECT id FROM [SheetData] WHERE empId = @empId AND sheetId = @sheetId');
 
     if (existing.recordset.length > 0) {
       await pool.request()
         .input('empId', sql.NVarChar, userId)
-        .input('sheetId', sql.NVarChar, sheetId)
+        .input('sheetId', sql.NVarChar, storageKey)
         .input('data', sql.VarChar(sql.MAX), dataStr)
         .query('UPDATE [SheetData] SET data = @data, updatedAt = SYSUTCDATETIME() WHERE empId = @empId AND sheetId = @sheetId');
     } else {
       await pool.request()
         .input('empId', sql.NVarChar, userId)
-        .input('sheetId', sql.NVarChar, sheetId)
+        .input('sheetId', sql.NVarChar, storageKey)
         .input('data', sql.VarChar(sql.MAX), dataStr)
         .query(`
           INSERT INTO [SheetData] (id, empId, sheetId, data, updatedAt)
           VALUES (CAST(NEWID() AS NVARCHAR(1000)), @empId, @sheetId, @data, SYSUTCDATETIME())
+        `);
+    }
+
+    // If there is a fallbackKey for baseline, also synchronize it
+    if (fallbackKey && fallbackKey !== storageKey) {
+      await pool.request()
+        .input('empId', sql.NVarChar, userId)
+        .input('sheetId', sql.NVarChar, fallbackKey)
+        .input('data', sql.VarChar(sql.MAX), dataStr)
+        .query(`
+          IF EXISTS (SELECT id FROM [SheetData] WHERE empId = @empId AND sheetId = @sheetId)
+            UPDATE [SheetData] SET data = @data, updatedAt = SYSUTCDATETIME() WHERE empId = @empId AND sheetId = @sheetId
+          ELSE
+            INSERT INTO [SheetData] (id, empId, sheetId, data, updatedAt)
+            VALUES (CAST(NEWID() AS NVARCHAR(1000)), @empId, @sheetId, @data, SYSUTCDATETIME())
         `);
     }
   },
@@ -578,6 +729,18 @@ const store = {
   async upsertSubmission(empCode: string, month: string, selfScore?: number) {
     const userId = await getOrCreateUserId(empCode, 'Shop Floor Employee');
     const pool = await getPool();
+
+    // Ensure cycle exists in AssessmentCycle
+    try {
+      await pool.request()
+        .input('cycMonth', sql.NVarChar, month)
+        .input('cycTitle', sql.NVarChar, `${month} Assessment Cycle`)
+        .query(`
+          IF NOT EXISTS (SELECT 1 FROM [AssessmentCycle] WHERE month = @cycMonth)
+            INSERT INTO [AssessmentCycle] (id, month, title, status, startDate, endDate, createdAt)
+            VALUES (CAST(NEWID() AS NVARCHAR(1000)), @cycMonth, @cycTitle, 'open', SYSUTCDATETIME(), SYSUTCDATETIME(), SYSUTCDATETIME())
+        `);
+    } catch (e) {}
 
     const existing = await pool.request()
       .input('empId', sql.NVarChar, userId)
@@ -633,7 +796,7 @@ const store = {
     };
   },
 
-  async listSubmissions(userContext?: { role: string; userId: string; unitId?: string | null }) {
+  async listSubmissions(userContext?: { role: string; userId: string; empCode?: string | null; unitId?: string | null; month?: string | null }) {
     const pool = await getPool();
     const request = pool.request();
     let query = `
@@ -661,13 +824,28 @@ const store = {
     if (userContext) {
       if (userContext.role === 'Team Leader (TL)') {
         request.input('tlId', sql.NVarChar, userContext.userId);
-        query += ` AND u.tlId = @tlId`;
+        request.input('tlEmpCode', sql.NVarChar, (userContext as any).empCode || userContext.userId);
+        query += ` AND (u.tlId = @tlId OR u.tlId = @tlEmpCode)`;
+        if (userContext.unitId) {
+          request.input('unitId', sql.NVarChar, userContext.unitId);
+          query += ` AND u.unitId = @unitId`;
+        }
       } else if (userContext.role === 'Senior Group Leader (SGL)') {
         request.input('sglId', sql.NVarChar, userContext.userId);
-        query += ` AND u.sglId = @sglId`;
+        request.input('sglEmpCode', sql.NVarChar, (userContext as any).empCode || userContext.userId);
+        query += ` AND (u.sglId = @sglId OR u.sglId = @sglEmpCode)`;
+        if (userContext.unitId) {
+          request.input('unitId', sql.NVarChar, userContext.unitId);
+          query += ` AND u.unitId = @unitId`;
+        }
       } else if (userContext.role === 'Unit Admin' && userContext.unitId) {
         request.input('unitId', sql.NVarChar, userContext.unitId);
         query += ` AND u.unitId = @unitId`;
+      }
+
+      if ((userContext as any).month) {
+        request.input('subMonth', sql.NVarChar, (userContext as any).month);
+        query += ` AND m.month = @subMonth`;
       }
     }
 
@@ -862,7 +1040,54 @@ const store = {
   },
 
   /* ---------------- assessment cycles ---------------- */
+  async ensureAssessmentCycles() {
+    try {
+      const pool = await getPool();
+      const res = await pool.request().query('SELECT month FROM [AssessmentCycle]');
+      const existing = new Set(res.recordset.map((r: any) => r.month));
+
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+
+      const startYear = Math.min(2025, currentYear - 1);
+      const endYear = Math.max(2027, currentYear + 1);
+
+      for (let y = startYear; y <= endYear; y++) {
+        for (let m = 0; m < 12; m++) {
+          const monthStr = `${y}-${String(m + 1).padStart(2, '0')}`;
+          if (!existing.has(monthStr)) {
+            const title = `${monthNames[m]} ${y} Assessment Cycle`;
+            const lastDay = new Date(y, m + 1, 0).getDate();
+            const startDate = `${monthStr}-01`;
+            const endDate = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
+            try {
+              await pool.request()
+                .input('month', sql.NVarChar, monthStr)
+                .input('title', sql.NVarChar, title)
+                .input('status', sql.NVarChar, 'open')
+                .input('start', sql.DateTime2, new Date(startDate))
+                .input('end', sql.DateTime2, new Date(endDate))
+                .query(`
+                  IF NOT EXISTS (SELECT 1 FROM [AssessmentCycle] WHERE month = @month)
+                    INSERT INTO [AssessmentCycle] (id, month, title, status, startDate, endDate, createdAt)
+                    VALUES (CAST(NEWID() AS NVARCHAR(1000)), @month, @title, @status, @start, @end, SYSUTCDATETIME())
+                `);
+              existing.add(monthStr);
+            } catch (e) {}
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error in ensureAssessmentCycles:', err);
+    }
+  },
+
   async listAssessmentCycles() {
+    await this.ensureAssessmentCycles();
     const pool = await getPool();
     const res = await pool.request().query(`
       SELECT id, month, title, status, startDate, endDate, createdAt

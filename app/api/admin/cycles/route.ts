@@ -20,12 +20,13 @@ export async function GET() {
 // POST /api/admin/cycles - Create or Update assessment cycle
 export async function POST(req: Request) {
   const session = await getSession();
-  if (session) {
-    const exact = String(session.exactRole || session.role || '').toLowerCase();
-    const isPermitted = session.role === 'supervisor' || exact.includes('admin') || exact.includes('hr') || exact.includes('leader') || exact.includes('tl') || exact.includes('sgl');
-    if (!isPermitted) {
-      return NextResponse.json({ error: 'Administrator privilege required to configure cycles.' }, { status: 403 });
-    }
+  const exact = session?.exactRole || session?.role;
+  const isSuperOrHr = exact === 'Super Admin' || exact === 'HR Head';
+  if (!isSuperOrHr) {
+    return NextResponse.json(
+      { error: 'Access denied: Only Super Admin and HR Head can configure assessment cycles.' },
+      { status: 403 }
+    );
   }
 
   try {

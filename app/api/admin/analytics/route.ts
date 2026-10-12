@@ -8,8 +8,9 @@ export async function GET(req: Request) {
   let unitFilter = url.searchParams.get('unit') || 'all';
   const month = url.searchParams.get('month') || '2026-10';
 
-  // If session is Unit Admin or SGL or TL, restrict unitFilter to their unit
-  if (session && session.role === 'Unit Admin' && session.unitId) {
+  const exact = session?.exactRole || session?.role;
+  // If session is Unit Admin, strictly restrict unitFilter to their assigned unit
+  if (session && exact === 'Unit Admin' && session.unitId) {
     unitFilter = session.unitId;
   }
 

@@ -42,22 +42,24 @@ async function api(path, opts = {}) {
   return json;
 }
 
-async function loadSheetData(empId, sheetId) {
+async function loadSheetData(empId, sheetId, cycle = getGlobalCycle()) {
   try {
     const isSup = currentRole === 'supervisor' || currentExactRole !== 'Shop Floor Employee';
+    const cParam = `cycle=${encodeURIComponent(cycle || getGlobalCycle())}`;
     const path = (isSup && sheetId !== 'supervisor')
-      ? `/api/employee/${empId}/sheet/${sheetId}`
-      : (isSup ? `/api/employee/${empId}/sheet/supervisor` : `/api/sheet/${sheetId}`);
+      ? `/api/employee/${empId}/sheet/${sheetId}?${cParam}`
+      : (isSup ? `/api/employee/${empId}/sheet/supervisor?${cParam}` : `/api/sheet/${sheetId}?${cParam}`);
     const { data } = await api(path);
     return data;
   } catch (e) { return null; }
 }
-async function saveSheetData(empId, sheetId, data) {
+async function saveSheetData(empId, sheetId, data, cycle = getGlobalCycle()) {
   try {
     const isSup = currentRole === 'supervisor' || currentExactRole !== 'Shop Floor Employee';
+    const cParam = `cycle=${encodeURIComponent(cycle || getGlobalCycle())}`;
     const path = isSup
-      ? `/api/employee/${empId}/sheet/supervisor`
-      : `/api/sheet/${sheetId}`;
+      ? `/api/employee/${empId}/sheet/supervisor?${cParam}`
+      : `/api/sheet/${sheetId}?${cParam}`;
     await api(path, { method: 'POST', body: data });
     return true;
   } catch (e) { console.error(e); return false; }
@@ -66,9 +68,166 @@ async function getDisplayName(empId) {
   try { const { name } = await api(`/api/employee/${empId}/name`); return name; }
   catch (e) { return empId; }
 }
-function currentMonthLabel() {
-  return new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+/* ============================= GLOBAL ASSESSMENT CYCLE & MONTH/YEAR ENGINE ============================= */
+const MONTH_NAMES = [
+  { val: '01', name: 'January', short: 'Jan' },
+  { val: '02', name: 'February', short: 'Feb' },
+  { val: '03', name: 'March', short: 'Mar' },
+  { val: '04', name: 'April', short: 'Apr' },
+  { val: '05', name: 'May', short: 'May' },
+  { val: '06', name: 'June', short: 'Jun' },
+  { val: '07', name: 'July', short: 'Jul' },
+  { val: '08', name: 'August', short: 'Aug' },
+  { val: '09', name: 'September', short: 'Sep' },
+  { val: '10', name: 'October', short: 'Oct' },
+  { val: '11', name: 'November', short: 'Nov' },
+  { val: '12', name: 'December', short: 'Dec' },
+];
+
+let globalSelectedYear = '2026';
+let globalSelectedMonth = '10';
+
+function getGlobalCycle() {
+  return `${globalSelectedYear}-${globalSelectedMonth}`;
 }
+
+function getGlobalCycleLabel() {
+  const m = MONTH_NAMES.find(x => x.val === globalSelectedMonth);
+  return `${m ? m.name : globalSelectedMonth} ${globalSelectedYear}`;
+}
+
+function currentMonthLabel() {
+  return getGlobalCycleLabel();
+}
+
+function populateAllMonthYearPickers() {
+  const monthPickers = document.querySelectorAll('.cycle-month-picker');
+  const yearPickers = document.querySelectorAll('.cycle-year-picker');
+
+  const monthHtml = MONTH_NAMES.map(m => 
+    `<option value="${m.val}" ${m.val === globalSelectedMonth ? 'selected' : ''}>${m.val} - ${m.name}</option>`
+  ).join('');
+
+  const now = new Date();
+  const currentYr = now.getFullYear();
+  const startYr = Math.min(2025, currentYr - 1);
+  const endYr = Math.max(2027, currentYr + 1);
+  const years = [];
+  for (let y = startYr; y <= endYr; y++) years.push(y);
+  if (!years.includes(parseInt(globalSelectedYear, 10))) {
+    years.push(parseInt(globalSelectedYear, 10));
+    years.sort();
+  }
+
+  const yearHtml = years.map(y => 
+    `<option value="${y}" ${String(y) === String(globalSelectedYear) ? 'selected' : ''}>${y}</option>`
+  ).join('');
+
+  monthPickers.forEach(p => {
+    p.innerHTML = monthHtml;
+    p.value = globalSelectedMonth;
+  });
+
+  yearPickers.forEach(p => {
+    p.innerHTML = yearHtml;
+    p.value = globalSelectedYear;
+  });
+
+  syncCycleBadges();
+}
+
+async function setGlobalCycle(newMonth, newYear) {
+  if (newMonth) globalSelectedMonth = String(newMonth).padStart(2, '0');
+  if (newYear) globalSelectedYear = String(newYear);
+
+  document.querySelectorAll('.cycle-month-picker').forEach(el => {
+    el.value = globalSelectedMonth;
+  });
+  document.querySelectorAll('.cycle-year-picker').forEach(el => {
+    el.value = globalSelectedYear;
+  });
+
+  syncCycleBadges();
+  await refreshCurrentScreenForCycle(getGlobalCycle());
+}
+
+function syncCycleBadges() {
+  const label = getGlobalCycleLabel();
+
+  const topbarBadge = document.getElementById('topbarCycleBadge');
+  if (topbarBadge) topbarBadge.textContent = label;
+
+  const empHeroStatus = document.getElementById('empHeroStatus');
+  if (empHeroStatus) empHeroStatus.textContent = `Assessment Cycle: ${label}`;
+
+  const empScoreBadge = document.getElementById('empScoreCycleBadge');
+  if (empScoreBadge) empScoreBadge.textContent = `${label} Cycle`;
+
+  const formCycleBadge = document.getElementById('formCycleBadge');
+  if (formCycleBadge) formCycleBadge.textContent = `Cycle: ${label}`;
+
+  const submitMonthLabel = document.getElementById('submitMonthLabel');
+  if (submitMonthLabel) submitMonthLabel.textContent = label;
+
+  const submitBtn = document.getElementById('submitBtn');
+  if (submitBtn) submitBtn.textContent = `Submit Passport for ${label}`;
+
+  const adminCycleBadge = document.getElementById('adminCycleBadge');
+  if (adminCycleBadge) adminCycleBadge.textContent = label;
+
+  const uaCycleBadge = document.getElementById('uaCycleBadge');
+  if (uaCycleBadge) uaCycleBadge.textContent = label;
+
+  const tlCycleBadge = document.getElementById('tlCycleBadge');
+  if (tlCycleBadge) tlCycleBadge.textContent = label;
+
+  const tlUnitBadgeTitle = document.getElementById('tlUnitBadgeTitle');
+  if (tlUnitBadgeTitle) tlUnitBadgeTitle.textContent = label;
+
+  const sglCycleBadgeTitle = document.getElementById('sglCycleBadgeTitle');
+  if (sglCycleBadgeTitle) sglCycleBadgeTitle.textContent = label;
+
+  const histActiveCycleBadge = document.getElementById('histActiveCycleBadge');
+  if (histActiveCycleBadge) histActiveCycleBadge.textContent = `Cycle: ${label}`;
+
+  const histTableTitleCycle = document.getElementById('histTableTitleCycle');
+  if (histTableTitleCycle) histTableTitleCycle.textContent = label;
+}
+
+async function refreshCurrentScreenForCycle(cycle) {
+  if (screens.home && !screens.home.classList.contains('hidden')) {
+    if (currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole)) {
+      await renderEmployeeScorecard(cycle);
+    } else if (currentExactRole === 'Team Leader (TL)') {
+      await renderTLView(cycle);
+    } else if (currentExactRole === 'Senior Group Leader (SGL)') {
+      await renderSGLView(cycle);
+    } else if (currentExactRole === 'Unit Admin') {
+      await renderUnitAdminView(cycle);
+    } else if (currentExactRole === 'Super Admin' || currentExactRole === 'HR Head') {
+      await renderAdminDashboard(selectedUnitFilter || 'all', cycle);
+    }
+  } else if (screens.menu && !screens.menu.classList.contains('hidden')) {
+    await renderMenu(cycle);
+  } else if (screens.form && !screens.form.classList.contains('hidden') && currentSheetId) {
+    await openSheet(currentSheetId);
+  } else if (screens.inbox && !screens.inbox.classList.contains('hidden')) {
+    await renderInbox(cycle);
+  } else if (screens.directory && !screens.directory.classList.contains('hidden')) {
+    await renderDirectory(cycle);
+  } else if (screens.historical && !screens.historical.classList.contains('hidden')) {
+    await renderHistoricalRecordsView(cycle);
+  }
+}
+
+// Global delegated change listener for month & year pickers
+document.addEventListener('change', async (e) => {
+  if (e.target.classList.contains('cycle-month-picker')) {
+    await setGlobalCycle(e.target.value, globalSelectedYear);
+  } else if (e.target.classList.contains('cycle-year-picker')) {
+    await setGlobalCycle(globalSelectedMonth, e.target.value);
+  }
+});
 
 /* ============================= SCREENS ============================= */
 const screens = {
@@ -76,6 +235,7 @@ const screens = {
   home: document.getElementById('screen-home'),
   inbox: document.getElementById('screen-inbox'),
   directory: document.getElementById('screen-directory'),
+  historical: document.getElementById('screen-historical'),
   lookup: document.getElementById('screen-lookup'),
   changepw: document.getElementById('screen-changepw'),
   menu: document.getElementById('screen-menu'),
@@ -89,6 +249,7 @@ function showScreen(name) {
   window.scrollTo(0, 0);
   updateEmployeeNavBar();
   updateSidebarActive();
+  syncCycleBadges();
 }
 
 function setTopbarWho(role, id, name, unitName, exactRole) {
@@ -111,6 +272,12 @@ function setTopbarWho(role, id, name, unitName, exactRole) {
     }
   }
   document.getElementById('whoAvatar').innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.7 0 4.9-2.2 4.9-4.9S14.7 2.2 12 2.2 7.1 4.4 7.1 7.1 9.3 12 12 12zm0 2.4c-3.3 0-9.8 1.6-9.8 4.9v2.5h19.6v-2.5c0-3.3-6.5-4.9-9.8-4.9z"/></svg>';
+
+  const manageUnitsBtn = document.getElementById('topbarManageUnitsBtn');
+  const unitBarEditBtn = document.getElementById('unitBarEditBtn');
+  const isSuper = (exactRole === 'Super Admin' || exactRole === 'HR Head');
+  if (manageUnitsBtn) manageUnitsBtn.style.display = isSuper ? 'inline-flex' : 'none';
+  if (unitBarEditBtn) unitBarEditBtn.style.display = isSuper ? 'inline-flex' : 'none';
 }
 
 /* -- restore session on page load, so a refresh doesn't log people out -- */
@@ -128,6 +295,7 @@ function setTopbarWho(role, id, name, unitName, exactRole) {
         await updateActiveEmployeeInfo(viewingEmpId, s.name, s.unitName);
       }
       setTopbarWho(s.role, s.id, s.name, s.unitName, s.exactRole);
+      populateAllMonthYearPickers();
       await renderHome();
       renderSidebar();
       updateEmployeeNavBar();
@@ -187,6 +355,7 @@ async function doLogin() {
       await updateActiveEmployeeInfo(viewingEmpId, result.name, result.unitName);
     }
     setTopbarWho(result.role, result.id, result.name, result.unitName, result.exactRole);
+    populateAllMonthYearPickers();
     document.getElementById('loginId').value = '';
     document.getElementById('loginPw').value = '';
     await renderHome();
@@ -208,6 +377,10 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   currentSheetId = null;
   viewingEmpId = null;
   activeEmployeeInfo = null;
+  const manageUnitsBtn = document.getElementById('topbarManageUnitsBtn');
+  const unitBarEditBtn = document.getElementById('unitBarEditBtn');
+  if (manageUnitsBtn) manageUnitsBtn.style.display = 'none';
+  if (unitBarEditBtn) unitBarEditBtn.style.display = 'none';
   updateEmployeeNavBar();
   showScreen('login');
 });
@@ -374,28 +547,36 @@ function renderSidebar() {
   let html = `<button class="sb-link-top ${isHomeActive ? 'active' : ''}" data-action="home">Dashboard</button>`;
 
   if (!isEmp) {
-    const exact = (currentExactRole || '').toLowerCase();
-    const isAdmin = exact.includes('admin') || exact.includes('hr');
-    const isSupervisorOrLeader = currentRole === 'supervisor' || exact.includes('leader') || exact.includes('tl') || exact.includes('sgl') || isAdmin;
+    const isSuperOrHr = currentExactRole === 'Super Admin' || currentExactRole === 'HR Head';
+    const isUnitAdmin = currentExactRole === 'Unit Admin';
+    const isSgl = currentExactRole === 'Senior Group Leader (SGL)';
+    const isHistActive = screens.historical && !screens.historical.classList.contains('hidden');
 
     html += `<div class="sb-section-label">Management Console</div>
       <button class="sb-link ${isInboxActive ? 'active' : ''}" data-action="inbox"><span class="sb-link-num">01</span>Submissions Inbox</button>
-      <button class="sb-link" data-action="directory"><span class="sb-link-num">02</span>Workforce Directory</button>
-      <button class="sb-link" data-action="lookup"><span class="sb-link-num">03</span>Look Up Employee</button>`;
+      <button class="sb-link ${screens.directory && !screens.directory.classList.contains('hidden') ? 'active' : ''}" data-action="directory"><span class="sb-link-num">02</span>Workforce Directory</button>`;
 
-    if (isAdmin) {
+    let nextNum = 3;
+    if (isSgl || isSuperOrHr) {
+      html += `<button class="sb-link ${isHistActive ? 'active' : ''}" data-action="historical-records"><span class="sb-link-num">0${nextNum++}</span>Historical Records</button>`;
+    }
+    html += `<button class="sb-link" data-action="lookup"><span class="sb-link-num">0${nextNum++}</span>Look Up Employee</button>`;
+
+    if (isSuperOrHr) {
       html += `
-        <button class="sb-link" data-action="add-user"><span class="sb-link-num">04</span>Add User</button>
-        <button class="sb-link" data-action="cycles"><span class="sb-link-num">05</span>Assessment Cycles</button>
-        <button class="sb-link" data-action="export-csv"><span class="sb-link-num">06</span>Export Report</button>`;
-    } else if (isSupervisorOrLeader) {
+        <button class="sb-link" data-action="add-user"><span class="sb-link-num">0${nextNum++}</span>Add User</button>
+        <button class="sb-link" data-action="cycles"><span class="sb-link-num">0${nextNum++}</span>Assessment Cycles</button>
+        <button class="sb-link" data-action="export-csv"><span class="sb-link-num">0${nextNum++}</span>Export Report</button>`;
+      if (currentExactRole === 'Super Admin') {
+        html += `<button class="sb-link" data-action="manage-units"><span class="sb-link-num">0${nextNum++}</span>Plant / Unit Settings</button>`;
+      }
+    } else if (isUnitAdmin) {
       html += `
-        <button class="sb-link" data-action="cycles"><span class="sb-link-num">04</span>Assessment Cycles</button>
-        <button class="sb-link" data-action="export-csv"><span class="sb-link-num">05</span>Export Report</button>`;
+        <button class="sb-link" data-action="add-user"><span class="sb-link-num">0${nextNum++}</span>Add User</button>
+        <button class="sb-link" data-action="export-csv"><span class="sb-link-num">0${nextNum++}</span>Export Report</button>`;
     }
 
-    const nextNum = isAdmin ? '07' : (isSupervisorOrLeader ? '06' : '04');
-    html += `<button class="sb-link" data-action="changepw"><span class="sb-link-num">${nextNum}</span>Security &amp; Passwords</button>`;
+    html += `<button class="sb-link" data-action="changepw"><span class="sb-link-num">${String(nextNum).padStart(2, '0')}</span>Security &amp; Passwords</button>`;
 
     // If an employee is currently selected:
     if (viewingEmpId && viewingEmpId !== currentEmpId) {
@@ -463,6 +644,12 @@ function renderSidebar() {
     showScreen('directory');
   });
 
+  const histLink = sidebar.querySelector('[data-action="historical-records"]');
+  if (histLink) histLink.addEventListener('click', async () => {
+    await renderHistoricalRecordsView();
+    showScreen('historical');
+  });
+
   const lookupLink = sidebar.querySelector('[data-action="lookup"]');
   if (lookupLink) lookupLink.addEventListener('click', () => {
     renderLookupPage();
@@ -475,6 +662,10 @@ function renderSidebar() {
 
   sidebar.querySelector('[data-action="cycles"]')?.addEventListener('click', () => {
     openCycleMgmtModal();
+  });
+
+  sidebar.querySelector('[data-action="manage-units"]')?.addEventListener('click', () => {
+    openUnitMgmtModal();
   });
 
   sidebar.querySelector('[data-action="export-csv"]')?.addEventListener('click', () => {
@@ -521,6 +712,7 @@ function updateSidebarActive() {
   const isHomeActive = screens.home && !screens.home.classList.contains('hidden');
   const isInboxActive = screens.inbox && !screens.inbox.classList.contains('hidden');
   const isDirActive = screens.directory && !screens.directory.classList.contains('hidden');
+  const isHistActive = screens.historical && !screens.historical.classList.contains('hidden');
   const isLookupActive = screens.lookup && !screens.lookup.classList.contains('hidden');
   const isChangepwActive = screens.changepw && !screens.changepw.classList.contains('hidden');
   const isMenuActive = screens.menu && !screens.menu.classList.contains('hidden');
@@ -539,6 +731,10 @@ function updateSidebarActive() {
   const dirBtn = document.querySelector('.sb-link[data-action="directory"]');
   if (dirBtn) {
     dirBtn.classList.toggle('active', isDirActive);
+  }
+  const histBtn = document.querySelector('.sb-link[data-action="historical-records"]');
+  if (histBtn) {
+    histBtn.classList.toggle('active', isHistActive);
   }
   const lookupBtn = document.querySelector('.sb-link[data-action="lookup"]');
   if (lookupBtn) {
@@ -637,6 +833,9 @@ async function renderHome() {
   if (currentExactRole === 'Super Admin' || currentExactRole === 'HR Head') {
     document.getElementById('homeLead').textContent = 'Centralized multi-unit assessment analytics and performance tracking across all 4 State Units.';
     if (adminView) adminView.classList.remove('hidden');
+    const unitBarEditBtn = document.getElementById('unitBarEditBtn');
+    if (unitBarEditBtn) unitBarEditBtn.style.display = 'inline-flex';
+    await renderUnitFilterPills();
     await renderAdminDashboard(selectedUnitFilter || 'all');
   } else if (currentExactRole === 'Unit Admin') {
     document.getElementById('homeLead').textContent = `Managing operations and assessment coverage for ${currentUnitName || 'Unit'}.`;
@@ -658,14 +857,14 @@ async function renderHome() {
 }
 
 /* ============================= EMPLOYEE SCORECARD ============================= */
-async function renderEmployeeScorecard() {
+async function renderEmployeeScorecard(month = getGlobalCycle()) {
   const card = document.getElementById('employeeScorecard');
   if (!card) return;
-  card.innerHTML = '<div style="color:var(--ink-dim);font-size:13px;padding:16px;background:#fff;border-radius:12px;border:1px solid var(--panel-line);">Loading monthly assessment scorecard…</div>';
+  card.innerHTML = `<div style="color:var(--ink-dim);font-size:13px;padding:16px;background:#fff;border-radius:12px;border:1px solid var(--panel-line);">Loading monthly assessment scorecard for ${esc(getGlobalCycleLabel())}…</div>`;
   card.classList.remove('hidden');
 
   try {
-    const res = await api('/api/employee/assessment');
+    const res = await api(`/api/employee/assessment?month=${encodeURIComponent(month)}`);
     const a = res.assessment;
 
     const scoreVal = (a && a.tlScore !== null && a.tlScore !== undefined) ? a.tlScore : (a?.score !== null && a?.score !== undefined ? a.score : null);
@@ -691,7 +890,7 @@ async function renderEmployeeScorecard() {
         <div class="emp-scorecard-card">
           <div class="emp-scorecard-top">
             <div>
-              <div class="emp-sc-title">Monthly Assessment Scorecard · October 2026</div>
+              <div class="emp-sc-title">Monthly Assessment Scorecard · ${esc(getGlobalCycleLabel())}</div>
               <div class="emp-sc-sub">Evaluated by ${esc(evaluator)} on ${dateStr} · Official Performance Review</div>
             </div>
             <span class="emp-sc-grade-badge">${esc(grade)}</span>
@@ -796,7 +995,7 @@ async function renderEmployeeScorecard() {
       <div class="emp-pending-card">
         <div class="emp-pending-header">
           <div>
-            <div class="emp-sc-title">October 2026 Passport Assessment Status</div>
+            <div class="emp-sc-title">${esc(getGlobalCycleLabel())} Passport Assessment Status</div>
             <div class="emp-sc-sub">${isSubmitted ? 'Monthly submission received · Awaiting Team Leader evaluation' : 'Active monthly assessment cycle in progress'}</div>
           </div>
           <span class="badge ${isSubmitted ? 'badge-submitted' : 'badge-pending'}">${isSubmitted ? 'Submitted to Supervisor' : 'Draft in Progress'}</span>
@@ -849,27 +1048,52 @@ async function renderEmployeeScorecard() {
 }
 
 /* ============================= ADMIN DASHBOARD ============================= */
-async function renderAdminDashboard(unit = 'all') {
+async function renderAdminDashboard(unit = 'all', month = getGlobalCycle()) {
   try {
-    const data = await api(`/api/admin/analytics?unit=${encodeURIComponent(unit)}`);
+    const data = await api(`/api/admin/analytics?unit=${encodeURIComponent(unit)}&month=${encodeURIComponent(month)}`);
     const k = data.kpi || data.kpis || {};
+
+    const scopeBadge = document.getElementById('adminScopeBadge');
+    if (scopeBadge) {
+      scopeBadge.textContent = (unit && unit !== 'all') ? `${unit} Plant Scope (Filtered)` : 'Multi-Unit Scope (All Plants)';
+    }
+
     document.getElementById('kpiTotalEmp').textContent = k.totalEmployees || 0;
     document.getElementById('kpiSubmitted').textContent = k.submittedCount !== undefined ? k.submittedCount : (k.submittedAssessments || 0);
     document.getElementById('kpiSubRate').textContent = `${k.submissionRate || 0}% Submission`;
     document.getElementById('kpiEvaluated').textContent = k.evaluatedCount !== undefined ? k.evaluatedCount : (k.evaluatedAssessments || 0);
     document.getElementById('kpiEvalRate').textContent = `${k.evaluationRate || 0}% Completed`;
     const avgScoreVal = k.averageScore !== undefined && k.averageScore !== null ? k.averageScore : (k.avgScore || 0);
-    document.getElementById('kpiAvgScore').textContent = avgScoreVal > 0 ? Number(avgScoreVal).toFixed(1) : '—';
+    const pendingVal = k.pendingReviewCount !== undefined ? k.pendingReviewCount : Math.max(0, (k.submittedCount || 0) - (k.evaluatedCount || 0));
+    const kpiPendingReviews = document.getElementById('kpiPendingReviews');
+    if (kpiPendingReviews) kpiPendingReviews.textContent = pendingVal;
+    const kpiPendingRate = document.getElementById('kpiPendingRate');
+    if (kpiPendingRate) {
+      kpiPendingRate.textContent = (k.submittedCount > 0)
+        ? `${Math.round(pendingVal / k.submittedCount * 100)}% Awaiting Rating`
+        : 'All Evaluated';
+    }
 
     const tbody = document.getElementById('unitMatrixBody');
     tbody.innerHTML = '';
     (data.units || []).forEach(u => {
+      const isSelected = (unit !== 'all' && (
+        (u.unitName && unit && u.unitName.toLowerCase() === unit.toLowerCase()) ||
+        u.unitId === unit
+      ));
       const tr = document.createElement('tr');
+      if (isSelected) {
+        tr.style.backgroundColor = '#eff6ff';
+        tr.style.boxShadow = 'inset 4px 0 0 var(--mahle-blue)';
+      }
       const subCount = u.submittedCount !== undefined ? u.submittedCount : (u.submitted || 0);
       const evalCount = u.evaluatedCount !== undefined ? u.evaluatedCount : (u.evaluated || 0);
       const avg = u.avgScore > 0 ? Number(u.avgScore).toFixed(1) + ' / 10' : '—';
       tr.innerHTML = `
-        <td style="font-weight:600;">${esc(u.unitName)}</td>
+        <td style="font-weight:600;">
+          ${esc(u.unitName)}
+          ${isSelected ? '<span class="badge" style="background:var(--mahle-blue);color:#fff;font-size:10px;margin-left:6px;padding:2px 8px;border-radius:12px;font-weight:700;">Active Filter</span>' : ''}
+        </td>
         <td><span class="who-unit">${esc(u.unitCode || u.code || '—')}</span></td>
         <td>${u.totalEmployees}</td>
         <td>${subCount} (${u.totalEmployees > 0 ? Math.round(subCount/u.totalEmployees*100) : 0}%)</td>
@@ -878,37 +1102,98 @@ async function renderAdminDashboard(unit = 'all') {
       `;
       tbody.appendChild(tr);
     });
+
+    const sglTbody = document.getElementById('sglMatrixBody');
+    if (sglTbody) {
+      sglTbody.innerHTML = '';
+      const teams = data.teams || [];
+      if (!teams.length) {
+        sglTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:18px;">No Senior Group Leader teams found in this scope.</td></tr>';
+      } else {
+        teams.forEach(tm => {
+          const tr = document.createElement('tr');
+          const subCount = tm.submittedCount || 0;
+          const evalCount = tm.evaluatedCount || 0;
+          const avg = tm.avgScore > 0 ? Number(tm.avgScore).toFixed(1) + ' / 10' : '—';
+          tr.innerHTML = `
+            <td style="font-weight:600;">
+              <span>${esc(tm.sglName)}</span>
+              ${tm.sglEmpCode ? `<span class="who-unit" style="margin-left:6px;">${esc(tm.sglEmpCode)}</span>` : ''}
+            </td>
+            <td><span class="who-unit" style="background:#f0f3fa;color:#1e2a63;">${esc(tm.unitName || 'Plant')}</span></td>
+            <td>${tm.totalEmployees || 0}</td>
+            <td>${subCount} (${tm.totalEmployees > 0 ? Math.round(subCount / tm.totalEmployees * 100) : 0}%)</td>
+            <td>${evalCount}</td>
+            <td style="font-weight:700;color:var(--shell-2);">${avg}</td>
+          `;
+          sglTbody.appendChild(tr);
+        });
+      }
+    }
   } catch (e) {
     console.error('Error rendering admin analytics:', e);
   }
 }
 
-// Unit filter pill listeners
-document.querySelectorAll('#unitFilterBar .unit-pill').forEach(btn => {
-  btn.addEventListener('click', async () => {
-    document.querySelectorAll('#unitFilterBar .unit-pill').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    selectedUnitFilter = btn.dataset.unit;
-    await renderAdminDashboard(selectedUnitFilter);
+async function renderUnitFilterPills() {
+  const container = document.getElementById('dynamicUnitPills');
+  if (!container) return;
+
+  let units = [];
+  try {
+    const res = await api('/api/admin/units');
+    units = res.units || [];
+  } catch (e) {
+    units = adminMetadataCache?.units || [];
+  }
+
+  if (!units || !units.length) {
+    units = [
+      { name: 'Gurugram', code: 'GGN' },
+      { name: 'Khandsa', code: 'K02' },
+      { name: 'State Unit 3', code: 'U03' },
+      { name: 'State Unit 4', code: 'U04' }
+    ];
+  }
+
+  container.innerHTML = `
+    <button type="button" class="unit-pill ${selectedUnitFilter === 'all' ? 'active' : ''}" data-unit="all">All Units</button>
+    ${units.map(u => `
+      <button type="button" class="unit-pill ${selectedUnitFilter === u.name ? 'active' : ''}" data-unit="${esc(u.name)}" data-id="${esc(u.id || '')}">
+        ${esc(u.name)}
+      </button>
+    `).join('')}
+  `;
+
+  container.querySelectorAll('.unit-pill').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      container.querySelectorAll('.unit-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedUnitFilter = btn.dataset.unit || 'all';
+      await renderAdminDashboard(selectedUnitFilter, getGlobalCycle());
+    });
   });
-});
+}
+
+let unitAdminEmployeesCache = [];
 
 /* ============================= UNIT ADMIN VIEW ============================= */
-async function renderUnitAdminView() {
+async function renderUnitAdminView(month = getGlobalCycle()) {
   try {
-    const { employees } = await api('/api/unit-admin/employees');
+    const { employees } = await api(`/api/unit-admin/employees?month=${encodeURIComponent(month)}`);
+    unitAdminEmployeesCache = employees || [];
     const tbody = document.getElementById('unitAdminEmpBody');
     tbody.innerHTML = '';
-    if (!employees || !employees.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink-dim);">No employees found in this unit.</td></tr>';
+    if (!unitAdminEmployeesCache || !unitAdminEmployeesCache.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink-dim);padding:24px;">No employees found in this unit.</td></tr>';
       return;
     }
 
     // Unit Admin KPI Stats
-    const total = employees.length;
-    const submitted = employees.filter(e => e.submissionStatus === 'evaluated' || e.submissionStatus === 'submitted' || e.submissionStatus === 'Submitted').length;
-    const evaluated = employees.filter(e => (e.tlScore !== null && e.tlScore !== undefined) || (e.score !== null && e.score !== undefined)).length;
-    const scores = employees
+    const total = unitAdminEmployeesCache.length;
+    const submitted = unitAdminEmployeesCache.filter(e => e.submissionStatus === 'evaluated' || e.submissionStatus === 'submitted' || e.submissionStatus === 'Submitted').length;
+    const evaluated = unitAdminEmployeesCache.filter(e => (e.tlScore !== null && e.tlScore !== undefined) || (e.score !== null && e.score !== undefined)).length;
+    const scores = unitAdminEmployeesCache
       .map(e => (e.tlScore !== null && e.tlScore !== undefined) ? e.tlScore : e.score)
       .filter(s => s !== null && s !== undefined && !isNaN(s));
     const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + Number(b), 0) / scores.length).toFixed(1) : '—';
@@ -926,24 +1211,45 @@ async function renderUnitAdminView() {
     const uaKpiAvg = document.getElementById('uaKpiAvgScore');
     if (uaKpiAvg) uaKpiAvg.textContent = avgScore;
 
-    employees.forEach(emp => {
+    unitAdminEmployeesCache.forEach(emp => {
       const tr = document.createElement('tr');
       const scoreVal = (emp.tlScore !== null && emp.tlScore !== undefined) ? emp.tlScore : emp.score;
       const isEval = !!scoreVal;
+      const isSub = emp.submissionStatus === 'submitted' || emp.submissionStatus === 'Submitted';
       tr.innerHTML = `
         <td style="font-family:var(--font-mono);font-weight:700;">${esc(emp.empCode)}</td>
         <td style="font-weight:600;">${esc(emp.name)}</td>
-        <td>${esc(emp.roleName || emp.role)}</td>
-        <td>${esc(emp.tlName || 'Unassigned')}</td>
-        <td><span class="badge ${isEval ? 'badge-evaluated' : 'badge-pending'}">${isEval ? 'Evaluated' : 'Pending'}</span></td>
-        <td style="font-weight:700;">${isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '—'}</td>
-        <td><button class="btn btn-sm btn-ghost btn-ua-view" data-emp="${emp.empCode}" data-name="${esc(emp.name)}">View Record</button></td>
+        <td><span style="font-size:12.5px;font-weight:600;">${esc(emp.roleName || emp.role)}</span></td>
+        <td style="font-size:12px;line-height:1.4;">
+          <div><strong>TL:</strong> ${esc(emp.tlName || 'Unassigned')}</div>
+          ${emp.sglName ? `<div style="color:var(--ink-dim);font-size:11px;"><strong>SGL:</strong> ${esc(emp.sglName)}</div>` : ''}
+        </td>
+        <td>
+          <span class="badge ${isEval ? 'badge-evaluated' : (isSub ? 'badge-evaluated' : 'badge-pending')}" style="${!isEval && isSub ? 'background:#e8f0fe;color:#1a73e8;' : ''}">
+            ${isEval ? 'Evaluated' : (isSub ? 'Submitted' : 'Pending')}
+          </span>
+        </td>
+        <td style="font-weight:700;font-family:var(--font-mono);">${isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '—'}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-ghost btn-ua-view" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}">View Record</button>
+            <button class="btn btn-sm btn-ghost btn-ua-edit" data-emp="${esc(emp.empCode)}" title="Edit user profile & supervisor mapping">Edit / Map</button>
+          </div>
+        </td>
       `;
       tbody.appendChild(tr);
     });
+
     tbody.querySelectorAll('.btn-ua-view').forEach(btn => {
       btn.addEventListener('click', async () => {
         await selectEmployee(btn.dataset.emp, btn.dataset.name);
+      });
+    });
+
+    tbody.querySelectorAll('.btn-ua-edit').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const emp = unitAdminEmployeesCache.find(e => e.empCode === btn.dataset.emp);
+        if (emp) await openUserMgmtModal(emp);
       });
     });
   } catch (e) {
@@ -952,79 +1258,210 @@ async function renderUnitAdminView() {
 }
 
 /* ============================= TL VIEW & EVALUATION ============================= */
-async function renderTLView() {
+let tlAssignedCache = [];
+let tlActiveFilter = 'all'; // 'all' | 'pending' | 'completed'
+let tlSearchQuery = '';
+
+async function renderTLView(month = getGlobalCycle()) {
   try {
-    const { employees } = await api('/api/tl/assigned');
-    const tbody = document.getElementById('tlAssignedBody');
-    tbody.innerHTML = '';
-    if (!employees || !employees.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-dim);">No shop floor employees assigned to your team.</td></tr>';
-      return;
-    }
-
-    // Team Leader KPI Stats
-    const total = employees.length;
-    const submitted = employees.filter(e => e.submissionStatus === 'evaluated' || e.submissionStatus === 'submitted' || e.submissionStatus === 'Submitted').length;
-    const evaluated = employees.filter(e => e.tlScore !== null && e.tlScore !== undefined).length;
-    const scores = employees
-      .map(e => e.tlScore)
-      .filter(s => s !== null && s !== undefined && !isNaN(s));
-    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + Number(b), 0) / scores.length).toFixed(1) : '—';
-
-    const tlKpiTotal = document.getElementById('tlKpiTotal');
-    if (tlKpiTotal) tlKpiTotal.textContent = total;
-    const tlKpiSub = document.getElementById('tlKpiSubmitted');
-    if (tlKpiSub) tlKpiSub.textContent = submitted;
-    const tlKpiSubRate = document.getElementById('tlKpiSubRate');
-    if (tlKpiSubRate) tlKpiSubRate.textContent = total > 0 ? `${Math.round(submitted / total * 100)}% Submission` : '0% Submission';
-    const tlKpiEval = document.getElementById('tlKpiEvaluated');
-    if (tlKpiEval) tlKpiEval.textContent = evaluated;
-    const tlKpiEvalRate = document.getElementById('tlKpiEvalRate');
-    if (tlKpiEvalRate) tlKpiEvalRate.textContent = total > 0 ? `${Math.round(evaluated / total * 100)}% Completed` : '0% Completed';
-    const tlKpiAvg = document.getElementById('tlKpiAvgScore');
-    if (tlKpiAvg) tlKpiAvg.textContent = avgScore;
-
-    employees.forEach(emp => {
-      const tr = document.createElement('tr');
-      const hasSub = emp.submissionStatus === 'evaluated' || emp.submissionStatus === 'Submitted';
-      const scoreVal = (emp.tlScore !== null && emp.tlScore !== undefined) ? emp.tlScore : emp.score;
-      const isEval = !!scoreVal;
-      tr.innerHTML = `
-        <td style="font-family:var(--font-mono);font-weight:700;">${esc(emp.empCode)}</td>
-        <td style="font-weight:600;">${esc(emp.name)}</td>
-        <td>${esc(emp.unitName || '—')}</td>
-        <td><span class="badge ${hasSub ? 'badge-evaluated' : 'badge-pending'}">${hasSub ? 'Submitted' : 'Pending'}</span></td>
-        <td style="font-weight:700;">${isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '<span style="color:var(--ink-dim);">Not evaluated</span>'}</td>
-        <td>
-          <button class="btn btn-sm btn-primary btn-tl-eval" data-emp="${emp.empCode}" data-name="${esc(emp.name)}" data-score="${scoreVal || 8.5}" data-grade="${esc(emp.ratingGrade || '')}" data-comments="${esc(emp.tlComments || '')}">Evaluate (1-10)</button>
-          <button class="btn btn-sm btn-ghost btn-tl-view" data-emp="${emp.empCode}" data-name="${esc(emp.name)}" style="margin-left:6px;">View Sheets</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-    tbody.querySelectorAll('.btn-tl-view').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await selectEmployee(btn.dataset.emp, btn.dataset.name);
-      });
-    });
-
-    tbody.querySelectorAll('.btn-tl-eval').forEach(btn => {
-      btn.addEventListener('click', () => {
-        openEvalModal(btn.dataset.emp, btn.dataset.name, btn.dataset.score, btn.dataset.grade, btn.dataset.comments);
-      });
-    });
+    const res = await api(`/api/tl/assigned?month=${encodeURIComponent(month)}`);
+    tlAssignedCache = res.employees || [];
+    applyTLDashboardView();
   } catch (e) {
     console.error('Error rendering TL view:', e);
   }
 }
 
-function openEvalModal(empCode, name, score, grade, comments) {
+function applyTLDashboardView() {
+  const employees = tlAssignedCache || [];
+  const homeTbody = document.getElementById('tlAssignedHomeBody');
+  const dirTbody = document.getElementById('tlAssignedBody');
+
+  // Team Leader KPI Stats
+  const total = employees.length;
+  const submitted = employees.filter(e => e.submissionStatus === 'evaluated' || e.submissionStatus === 'submitted' || e.submissionStatus === 'Submitted').length;
+  const evaluated = employees.filter(e => e.tlScore !== null && e.tlScore !== undefined).length;
+  const pending = total - evaluated;
+  const scores = employees
+    .map(e => e.tlScore)
+    .filter(s => s !== null && s !== undefined && !isNaN(s));
+  const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + Number(b), 0) / scores.length).toFixed(1) : '—';
+
+  // Update KPI Cards
+  const tlKpiTotal = document.getElementById('tlKpiTotal');
+  if (tlKpiTotal) tlKpiTotal.textContent = total;
+  const tlKpiSub = document.getElementById('tlKpiSubmitted');
+  if (tlKpiSub) tlKpiSub.textContent = submitted;
+  const tlKpiSubRate = document.getElementById('tlKpiSubRate');
+  if (tlKpiSubRate) tlKpiSubRate.textContent = total > 0 ? `${Math.round(submitted / total * 100)}% Submission` : '0% Submission';
+  
+  const tlKpiPending = document.getElementById('tlKpiPending');
+  if (tlKpiPending) tlKpiPending.textContent = pending;
+  const tlKpiPendingSub = document.getElementById('tlKpiPendingSub');
+  if (tlKpiPendingSub) tlKpiPendingSub.textContent = pending > 0 ? `${pending} Awaiting Rating` : 'All Evaluated';
+
+  const tlKpiEval = document.getElementById('tlKpiEvaluated');
+  if (tlKpiEval) tlKpiEval.textContent = evaluated;
+  const tlKpiEvalRate = document.getElementById('tlKpiEvalRate');
+  if (tlKpiEvalRate) tlKpiEvalRate.textContent = total > 0 ? `${Math.round(evaluated / total * 100)}% Completed` : '0% Completed';
+  
+  const tlKpiAvg = document.getElementById('tlKpiAvgScore');
+  if (tlKpiAvg) tlKpiAvg.textContent = avgScore;
+
+  // Update Filter Pill Counts
+  const countAll = document.getElementById('tlCountAll');
+  if (countAll) countAll.textContent = total;
+  const countPending = document.getElementById('tlCountPending');
+  if (countPending) countPending.textContent = pending;
+  const countCompleted = document.getElementById('tlCountCompleted');
+  if (countCompleted) countCompleted.textContent = evaluated;
+
+  const unitBadgeTitle = document.getElementById('tlUnitBadgeTitle');
+  if (unitBadgeTitle && currentUnitName) unitBadgeTitle.textContent = `${currentUnitName} · ${getGlobalCycleLabel()}`;
+
+  // Apply Filter & Search
+  const query = (tlSearchQuery || '').toLowerCase().trim();
+  const filtered = employees.filter(emp => {
+    const isEval = (emp.tlScore !== null && emp.tlScore !== undefined);
+    
+    // Status Filter
+    if (tlActiveFilter === 'pending' && isEval) return false;
+    if (tlActiveFilter === 'completed' && !isEval) return false;
+
+    // Search Query
+    if (query) {
+      const matchEmp = (emp.empCode || '').toLowerCase().includes(query);
+      const matchName = (emp.name || '').toLowerCase().includes(query);
+      const matchDept = (emp.departmentName || '').toLowerCase().includes(query);
+      if (!matchEmp && !matchName && !matchDept) return false;
+    }
+
+    return true;
+  });
+
+  const summaryBadge = document.getElementById('tlFilterSummaryBadge');
+  if (summaryBadge) {
+    summaryBadge.textContent = `Showing ${filtered.length} of ${total} staff`;
+  }
+
+  // Helper to render rows into a tbody
+  const populateTbody = (tbody, isHome) => {
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!filtered.length) {
+      const emptyMsg = total === 0 
+        ? 'No shop floor operators mapped under your supervision in this plant unit.' 
+        : (tlActiveFilter === 'pending' 
+          ? '✓ Great job! All assigned team members have been evaluated.' 
+          : 'No team members matching current filter.');
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:24px;">${esc(emptyMsg)}</td></tr>`;
+      return;
+    }
+
+    filtered.forEach(emp => {
+      const tr = document.createElement('tr');
+      const hasSub = emp.submissionStatus === 'evaluated' || emp.submissionStatus === 'submitted' || emp.submissionStatus === 'Submitted';
+      const scoreVal = (emp.tlScore !== null && emp.tlScore !== undefined) ? emp.tlScore : emp.score;
+      const isEval = (scoreVal !== null && scoreVal !== undefined && !isNaN(scoreVal));
+      
+      let critJsonStr = '';
+      try {
+        critJsonStr = emp.criteriaScores ? JSON.stringify(emp.criteriaScores) : '';
+      } catch (e) {}
+
+      tr.innerHTML = `
+        <td style="font-family:var(--font-mono);font-weight:700;color:#1e2a63;">${esc(emp.empCode)}</td>
+        <td style="font-weight:600;">${esc(emp.name)}</td>
+        <td>${esc(emp.departmentName || 'Operations')}</td>
+        <td>
+          <span class="badge ${hasSub ? 'badge-evaluated' : 'badge-pending'}">
+            ${hasSub ? '✓ Submitted' : 'Pending Submission'}
+          </span>
+        </td>
+        <td>
+          ${isEval 
+            ? `<div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-weight:700;font-size:13.5px;color:#1e2a63;">${Number(scoreVal).toFixed(1)} / 10</span>
+                <span class="badge badge-evaluated" style="font-size:10.5px;">${esc(emp.ratingGrade || 'Grade A')}</span>
+               </div>`
+            : `<span class="badge badge-pending" style="background:#fff3cd;color:#856404;font-weight:700;">⏳ Awaiting Rating</span>`
+          }
+        </td>
+        <td>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-sm btn-ghost btn-tl-review" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" data-unit="${esc(emp.unitName || '')}" title="Open employee Growth Passport to review monthly report (Sheets 1-9)">
+              Review Report
+            </button>
+            <button type="button" class="btn btn-sm ${isEval ? 'btn-ghost' : 'btn-primary'} btn-tl-eval" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" data-score="${isEval ? scoreVal : 8.5}" data-grade="${esc(emp.ratingGrade || '')}" data-comments="${esc(emp.tlComments || '')}" data-crit='${esc(critJsonStr)}' title="Give rating marks (1-10) and submit assessment">
+              ${isEval ? 'Update Rating (1-10)' : 'Give Rating (1-10)'}
+            </button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.btn-tl-review').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await selectEmployee(btn.dataset.emp, btn.dataset.name, btn.dataset.unit);
+      });
+    });
+
+    tbody.querySelectorAll('.btn-tl-eval').forEach(btn => {
+      btn.addEventListener('click', () => {
+        let parsedCrit = null;
+        try {
+          if (btn.dataset.crit) parsedCrit = JSON.parse(btn.dataset.crit);
+        } catch (e) {}
+        openEvalModal(btn.dataset.emp, btn.dataset.name, btn.dataset.score, btn.dataset.grade, btn.dataset.comments, parsedCrit);
+      });
+    });
+  };
+
+  populateTbody(homeTbody, true);
+  populateTbody(dirTbody, false);
+}
+
+// TL Filter Buttons event listeners
+document.querySelectorAll('[data-tlfilter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-tlfilter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    tlActiveFilter = btn.dataset.tlfilter || 'all';
+    applyTLDashboardView();
+  });
+});
+
+// TL Home Search event listener
+document.getElementById('tlHomeSearchInput')?.addEventListener('input', (e) => {
+  tlSearchQuery = e.target.value;
+  applyTLDashboardView();
+});
+
+function openEvalModal(empCode, name, score, grade, comments, criteriaScores = null) {
   currentEvalEmpId = empCode;
   currentEvalEmpName = name;
-  document.getElementById('evalModalTitle').textContent = `Evaluate: ${name} (${empCode})`;
+  document.getElementById('evalModalTitle').textContent = `Evaluate Assessment: ${name} (${empCode})`;
+  const subEl = document.getElementById('evalModalSub');
+  if (subEl) subEl.textContent = `Plant: ${currentUnitName || 'Unit'} · Official Monthly Rating (Scale 1.0 - 10.0)`;
+  
   const scoreInput = document.getElementById('evalOverallScore');
   scoreInput.value = score ? Number(score).toFixed(1) : '8.5';
+  
+  // Populate criteria breakdown
+  const crit = (criteriaScores && typeof criteriaScores === 'object') ? criteriaScores : {};
+  const sSafety = document.getElementById('cSafety');
+  if (sSafety) sSafety.value = crit.safety !== undefined ? crit.safety : (score >= 8.5 ? 9.0 : 8.5);
+  const sQuality = document.getElementById('cQuality');
+  if (sQuality) sQuality.value = crit.quality !== undefined ? crit.quality : (score >= 8.5 ? 8.5 : 8.0);
+  const sProd = document.getElementById('cProd');
+  if (sProd) sProd.value = crit.productivity !== undefined ? crit.productivity : (score >= 8.5 ? 8.5 : 8.0);
+  const sAttend = document.getElementById('cAttend');
+  if (sAttend) sAttend.value = crit.attendance !== undefined ? crit.attendance : (score >= 8.5 ? 9.5 : 9.0);
+  const sKaizen = document.getElementById('cKaizen');
+  if (sKaizen) sKaizen.value = crit.kaizen !== undefined ? crit.kaizen : (score >= 8.5 ? 8.5 : 8.0);
+
   document.getElementById('evalComments').value = comments || '';
   updateEvalModalGrade();
   document.getElementById('evalModal').classList.remove('hidden');
@@ -1034,7 +1471,7 @@ function updateEvalModalGrade() {
   const score = parseFloat(document.getElementById('evalOverallScore').value) || 0;
   const badge = document.getElementById('evalGradeBadge');
   if (score >= 9.0) {
-    badge.textContent = 'Grade A+ (Exceptional)';
+    badge.textContent = 'Grade A+ (Distinction)';
     badge.className = 'badge badge-evaluated';
   } else if (score >= 8.0) {
     badge.textContent = 'Grade A (Outstanding)';
@@ -1074,13 +1511,13 @@ document.getElementById('evalCancelBtn').addEventListener('click', () => {
 document.getElementById('evalSubmitBtn').addEventListener('click', async () => {
   if (!currentEvalEmpId) return;
   const scoreVal = parseFloat(document.getElementById('evalOverallScore').value);
-  if (isNaN(scoreVal) || scoreVal < 1 || scoreVal > 10) {
+  if (isNaN(scoreVal) || scoreVal < 1.0 || scoreVal > 10.0) {
     alert('Please enter a valid evaluation score between 1.0 and 10.0');
     return;
   }
   const payload = {
     employeeId: currentEvalEmpId,
-    cycleId: 1,
+    month: getGlobalCycle(),
     score: scoreVal,
     ratingGrade: document.getElementById('evalGradeBadge').textContent,
     criteriaScores: {
@@ -1090,79 +1527,646 @@ document.getElementById('evalSubmitBtn').addEventListener('click', async () => {
       attendance: parseFloat(document.getElementById('cAttend').value) || 9.0,
       kaizen: parseFloat(document.getElementById('cKaizen').value) || 8.0,
     },
+    tlComments: document.getElementById('evalComments').value.trim(),
     comments: document.getElementById('evalComments').value.trim(),
   };
   try {
     const res = await api('/api/tl/evaluate', { method: 'POST', body: payload });
-    showToast(`Assessment submitted: ${res.score}/10`);
+    showToast(`Assessment submitted: ${res.score}/10 (${res.ratingGrade})`);
     document.getElementById('evalModal').classList.add('hidden');
     if (viewingEmpId === currentEvalEmpId) {
       await updateActiveEmployeeInfo(viewingEmpId);
       updateEmployeeNavBar();
     }
-    await renderTLView();
+    await renderTLView(getGlobalCycle());
   } catch (err) {
     alert(err.message || 'Failed to submit evaluation.');
   }
 });
 
-/* ============================= SGL VIEW ============================= */
-async function renderSGLView() {
+/* ============================= SGL VIEW & AUDIT WORKFLOW ============================= */
+let sglTeamCache = [];
+let sglActiveFilter = 'all';
+let sglSearchQuery = '';
+let sglSelectedMonth = getGlobalCycle();
+let currentSglAuditEmp = null;
+
+async function renderSGLView(month = getGlobalCycle()) {
+  sglSelectedMonth = month;
   try {
-    const res = await api('/api/sgl/teams');
-    const list = res.team || res.employees || [];
-    const tbody = document.getElementById('sglTeamBody');
-    tbody.innerHTML = '';
-    if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-dim);">No group members found.</td></tr>';
-      return;
+    const res = await api(`/api/sgl/teams?month=${encodeURIComponent(sglSelectedMonth)}`);
+    sglTeamCache = res.team || res.employees || [];
+    
+    // Update unit badge & cycle title
+    const monthSelect = document.getElementById('sglMonthSelect');
+    if (monthSelect && monthSelect.value !== globalSelectedMonth) {
+      monthSelect.value = globalSelectedMonth;
+    }
+    const yearSelect = document.getElementById('sglYearSelect');
+    if (yearSelect && yearSelect.value !== globalSelectedYear) {
+      yearSelect.value = globalSelectedYear;
+    }
+    const unitBadgeTitle = document.getElementById('sglUnitBadgeTitle');
+    if (unitBadgeTitle) {
+      unitBadgeTitle.textContent = `${currentUnitName || 'Unit'} · Plant Supervision`;
+    }
+    const cycleBadgeTitle = document.getElementById('sglCycleBadgeTitle');
+    if (cycleBadgeTitle) {
+      cycleBadgeTitle.textContent = getGlobalCycleLabel();
     }
 
-    // SGL KPI Stats
-    const total = list.length;
-    const submitted = list.filter(e => e.submissionStatus === 'evaluated' || e.submissionStatus === 'submitted' || e.submissionStatus === 'Submitted').length;
-    const evaluated = list.filter(e => e.tlScore !== null && e.tlScore !== undefined).length;
-    const scores = list
-      .map(e => e.tlScore)
-      .filter(s => s !== null && s !== undefined && !isNaN(s));
-    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + Number(b), 0) / scores.length).toFixed(1) : '—';
-
-    const sglKpiTotal = document.getElementById('sglKpiTotal');
-    if (sglKpiTotal) sglKpiTotal.textContent = total;
-    const sglKpiSub = document.getElementById('sglKpiSubmitted');
-    if (sglKpiSub) sglKpiSub.textContent = submitted;
-    const sglKpiSubRate = document.getElementById('sglKpiSubRate');
-    if (sglKpiSubRate) sglKpiSubRate.textContent = total > 0 ? `${Math.round(submitted / total * 100)}% Submission` : '0% Submission';
-    const sglKpiEval = document.getElementById('sglKpiEvaluated');
-    if (sglKpiEval) sglKpiEval.textContent = evaluated;
-    const sglKpiEvalRate = document.getElementById('sglKpiEvalRate');
-    if (sglKpiEvalRate) sglKpiEvalRate.textContent = total > 0 ? `${Math.round(evaluated / total * 100)}% Completed` : '0% Completed';
-    const sglKpiAvg = document.getElementById('sglKpiAvgScore');
-    if (sglKpiAvg) sglKpiAvg.textContent = avgScore;
-
-    list.forEach(emp => {
-      const tr = document.createElement('tr');
-      const scoreVal = (emp.tlScore !== null && emp.tlScore !== undefined) ? emp.tlScore : emp.score;
-      const isEval = !!scoreVal;
-      tr.innerHTML = `
-        <td style="font-family:var(--font-mono);font-weight:700;">${esc(emp.empCode)}</td>
-        <td style="font-weight:600;">${esc(emp.name)}</td>
-        <td>${esc(emp.tlName || 'Unassigned')}</td>
-        <td><span class="badge ${isEval ? 'badge-evaluated' : 'badge-pending'}">${isEval ? 'Evaluated' : 'Pending'}</span></td>
-        <td style="font-weight:700;">${isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '—'}</td>
-        <td><button class="btn btn-sm btn-ghost btn-sgl-view" data-emp="${emp.empCode}" data-name="${esc(emp.name)}">Audit Record</button></td>
-      `;
-      tbody.appendChild(tr);
-    });
-    tbody.querySelectorAll('.btn-sgl-view').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await selectEmployee(btn.dataset.emp, btn.dataset.name);
-      });
-    });
+    applySGLDashboardView();
   } catch (e) {
     console.error('Error rendering SGL view:', e);
   }
 }
+
+function applySGLDashboardView() {
+  const employees = sglTeamCache || [];
+  const homeTbody = document.getElementById('sglTeamHomeBody');
+  const dirTbody = document.getElementById('sglTeamBody');
+
+  // Compute SGL Metrics
+  const total = employees.length;
+  const submitted = employees.filter(e => e.submissionStatus === 'evaluated' || e.submissionStatus === 'submitted' || e.submissionStatus === 'Submitted').length;
+  const evaluated = employees.filter(e => e.tlScore !== null && e.tlScore !== undefined && !isNaN(e.tlScore)).length;
+  const pending = employees.filter(e => (e.submissionStatus === 'submitted' || e.submissionStatus === 'Submitted') && (e.tlScore === null || e.tlScore === undefined)).length;
+  const notSub = total - submitted;
+
+  const scores = employees
+    .map(e => e.tlScore)
+    .filter(s => s !== null && s !== undefined && !isNaN(s));
+  const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + Number(b), 0) / scores.length).toFixed(1) : '—';
+
+  // Performance Tiers Distribution
+  const tierA = scores.filter(s => Number(s) >= 8.0).length;
+  const tierB = scores.filter(s => Number(s) >= 6.0 && Number(s) < 8.0).length;
+  const tierC = scores.filter(s => Number(s) < 6.0).length;
+
+  // Update KPI Cards
+  const sglKpiTotal = document.getElementById('sglKpiTotal');
+  if (sglKpiTotal) sglKpiTotal.textContent = total;
+  const sglKpiSub = document.getElementById('sglKpiSubmitted');
+  if (sglKpiSub) sglKpiSub.textContent = submitted;
+  const sglKpiSubRate = document.getElementById('sglKpiSubRate');
+  if (sglKpiSubRate) sglKpiSubRate.textContent = total > 0 ? `${Math.round(submitted / total * 100)}% Submission` : '0% Submission';
+
+  const sglKpiPending = document.getElementById('sglKpiPending');
+  if (sglKpiPending) sglKpiPending.textContent = pending;
+  const sglKpiPendingSub = document.getElementById('sglKpiPendingSub');
+  if (sglKpiPendingSub) sglKpiPendingSub.textContent = pending > 0 ? `${pending} Awaiting TL Rating` : 'All Submissions Scored';
+
+  const sglKpiEval = document.getElementById('sglKpiEvaluated');
+  if (sglKpiEval) sglKpiEval.textContent = evaluated;
+  const sglKpiEvalRate = document.getElementById('sglKpiEvalRate');
+  if (sglKpiEvalRate) sglKpiEvalRate.textContent = total > 0 ? `${Math.round(evaluated / total * 100)}% Completed` : '0% Completed';
+
+  const sglKpiAvg = document.getElementById('sglKpiAvgScore');
+  if (sglKpiAvg) sglKpiAvg.textContent = avgScore;
+
+  // Update Tier Distribution Cards
+  const countTierA = document.getElementById('sglCountTierA');
+  if (countTierA) countTierA.textContent = tierA;
+  const countTierB = document.getElementById('sglCountTierB');
+  if (countTierB) countTierB.textContent = tierB;
+  const countTierC = document.getElementById('sglCountTierC');
+  if (countTierC) countTierC.textContent = tierC;
+
+  // Update Filter Pill Counts
+  const countAll = document.getElementById('sglCountAll');
+  if (countAll) countAll.textContent = total;
+  const countPendingPill = document.getElementById('sglCountPending');
+  if (countPendingPill) countPendingPill.textContent = pending;
+  const countEvalPill = document.getElementById('sglCountEvaluated');
+  if (countEvalPill) countEvalPill.textContent = evaluated;
+  const countNotSubPill = document.getElementById('sglCountNotSub');
+  if (countNotSubPill) countNotSubPill.textContent = notSub;
+
+  // Filter & Search
+  const query = (sglSearchQuery || '').toLowerCase().trim();
+  const filtered = employees.filter(emp => {
+    const isEval = (emp.tlScore !== null && emp.tlScore !== undefined && !isNaN(emp.tlScore));
+    const hasSub = (emp.submissionStatus === 'evaluated' || emp.submissionStatus === 'submitted' || emp.submissionStatus === 'Submitted');
+
+    if (sglActiveFilter === 'pending' && (!hasSub || isEval)) return false;
+    if (sglActiveFilter === 'evaluated' && !isEval) return false;
+    if (sglActiveFilter === 'notsub' && hasSub) return false;
+
+    if (query) {
+      const mCode = (emp.empCode || '').toLowerCase().includes(query);
+      const mName = (emp.name || '').toLowerCase().includes(query);
+      const mTL = (emp.tlName || '').toLowerCase().includes(query);
+      const mDept = (emp.departmentName || '').toLowerCase().includes(query);
+      if (!mCode && !mName && !mTL && !mDept) return false;
+    }
+
+    return true;
+  });
+
+  const summaryBadge = document.getElementById('sglFilterSummaryBadge');
+  if (summaryBadge) {
+    summaryBadge.textContent = `Showing ${filtered.length} of ${total} group staff`;
+  }
+
+  // Populate Table Helper
+  const populateTable = (tbody, isHome) => {
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!filtered.length) {
+      const emptyMsg = total === 0
+        ? 'No employees mapped under your group supervision in this plant unit.'
+        : (sglActiveFilter === 'pending'
+          ? '✓ Great job! No pending TL assessments awaiting rating in your group.'
+          : 'No group members matching current filter.');
+      tbody.innerHTML = `<tr><td colspan="${isHome ? 7 : 8}" style="text-align:center;color:var(--ink-dim);padding:24px;">${esc(emptyMsg)}</td></tr>`;
+      return;
+    }
+
+    filtered.forEach(emp => {
+      const tr = document.createElement('tr');
+      const scoreVal = (emp.tlScore !== null && emp.tlScore !== undefined) ? emp.tlScore : emp.score;
+      const isEval = (scoreVal !== null && scoreVal !== undefined && !isNaN(scoreVal));
+      const hasSub = (emp.submissionStatus === 'evaluated' || emp.submissionStatus === 'submitted' || emp.submissionStatus === 'Submitted');
+      const tlFeedback = emp.tlComments ? `"${esc(emp.tlComments)}"` : '—';
+      const roleOrDept = emp.roleName === 'Team Leader (TL)' ? 'Team Leader' : (emp.departmentName || 'Operations');
+
+      let actionButtons = `
+        <button type="button" class="btn btn-sm btn-ghost btn-sgl-report" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" data-unit="${esc(emp.unitName || '')}" title="View employee monthly growth passport (Sheets 1-9)">
+          Review Report
+        </button>
+      `;
+
+      if (isEval) {
+        actionButtons += `
+          <button type="button" class="btn btn-sm btn-primary btn-sgl-audit" data-emp="${esc(emp.empCode)}" title="Audit TL assessment score, criteria breakdown, feedback, and record SGL sign-off">
+            Audit TL Review
+          </button>
+        `;
+      } else if (hasSub) {
+        actionButtons += `
+          <span class="badge badge-pending" style="font-size:11px;background:#fff3cd;color:#856404;" title="Awaiting evaluation from assigned Team Leader">
+            ⏳ Awaiting TL
+          </span>
+        `;
+      }
+
+      if (isHome) {
+        tr.innerHTML = `
+          <td style="font-family:var(--font-mono);font-weight:700;color:#1e2a63;">${esc(emp.empCode)}</td>
+          <td style="font-weight:600;">${esc(emp.name)}</td>
+          <td>${esc(emp.tlName || 'Unassigned TL')}</td>
+          <td>
+            <span class="badge ${hasSub ? 'badge-evaluated' : 'badge-pending'}">
+              ${hasSub ? '✓ Submitted' : 'Pending'}
+            </span>
+          </td>
+          <td>
+            ${isEval 
+              ? `<div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-weight:700;font-size:13.5px;color:#1e2a63;">${Number(scoreVal).toFixed(1)} / 10</span>
+                  <span class="badge badge-evaluated" style="font-size:10.5px;">${esc(emp.ratingGrade || 'Grade A')}</span>
+                 </div>`
+              : (hasSub 
+                  ? `<span class="badge badge-pending" style="background:#fff3cd;color:#856404;font-weight:700;">⏳ Pending TL Rating</span>`
+                  : `<span class="badge badge-pending" style="opacity:0.6;">Report Not Submitted</span>`)
+            }
+          </td>
+          <td style="max-width:220px;font-size:12.5px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(emp.tlComments || '')}">
+            ${tlFeedback}
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              ${actionButtons}
+            </div>
+          </td>
+        `;
+      } else {
+        // Directory Table View
+        tr.innerHTML = `
+          <td style="font-family:var(--font-mono);font-weight:700;color:#1e2a63;">${esc(emp.empCode)}</td>
+          <td style="font-weight:600;">${esc(emp.name)}</td>
+          <td>${esc(roleOrDept)}</td>
+          <td>${esc(emp.tlName || 'Unassigned TL')}</td>
+          <td>
+            <span class="badge ${hasSub ? 'badge-evaluated' : 'badge-pending'}">
+              ${hasSub ? '✓ Submitted' : 'Pending'}
+            </span>
+          </td>
+          <td>
+            ${isEval 
+              ? `<span style="font-weight:700;color:#1e2a63;">${Number(scoreVal).toFixed(1)} / 10</span> <span class="badge badge-evaluated" style="font-size:10px;">${esc(emp.ratingGrade || 'Grade A')}</span>`
+              : (hasSub 
+                  ? `<span class="badge badge-pending" style="background:#fff3cd;color:#856404;font-size:11px;">⏳ Awaiting TL</span>`
+                  : `<span style="color:var(--ink-dim);">—</span>`)
+            }
+          </td>
+          <td style="max-width:180px;font-size:12px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(emp.tlComments || '')}">
+            ${tlFeedback}
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              ${actionButtons}
+            </div>
+          </td>
+        `;
+      }
+
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.btn-sgl-report').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await selectEmployee(btn.dataset.emp, btn.dataset.name, btn.dataset.unit);
+      });
+    });
+
+    tbody.querySelectorAll('.btn-sgl-audit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const empCode = btn.dataset.emp;
+        const emp = sglTeamCache.find(e => e.empCode === empCode);
+        if (emp) openSglAuditModal(emp);
+      });
+    });
+  };
+
+  populateTable(homeTbody, true);
+  populateTable(dirTbody, false);
+}
+
+function openSglAuditModal(emp) {
+  currentSglAuditEmp = emp;
+  const scoreVal = emp.tlScore !== null && emp.tlScore !== undefined ? emp.tlScore : emp.score;
+  const numScore = scoreVal ? Number(scoreVal) : 8.5;
+  const crit = emp.criteriaScores || {};
+
+  document.getElementById('sglAuditModalTitle').textContent = `Audit TL Assessment: ${emp.name} (${emp.empCode})`;
+  document.getElementById('sglAuditModalSub').textContent = `Plant: ${emp.unitName || currentUnitName || 'Unit'} · Assigned TL: ${emp.tlName || 'Team Leader'} · Cycle: ${sglSelectedMonth}`;
+
+  const scoreEl = document.getElementById('sglAuditScoreVal');
+  if (scoreEl) scoreEl.textContent = scoreVal ? numScore.toFixed(1) : '—';
+
+  const gradeEl = document.getElementById('sglAuditGradeBadge');
+  if (gradeEl) {
+    gradeEl.textContent = emp.ratingGrade || (numScore >= 9.0 ? 'Grade A+ (Distinction)' : (numScore >= 8.0 ? 'Grade A (Outstanding)' : (numScore >= 7.0 ? 'Grade B+ (Good)' : 'Grade B (Satisfactory)')));
+  }
+
+  const evalMeta = document.getElementById('sglAuditEvaluatorMeta');
+  if (evalMeta) {
+    const revDate = emp.reviewedAt ? new Date(emp.reviewedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recorded';
+    evalMeta.textContent = `Evaluated by ${emp.evaluatorName || emp.tlName || 'Team Leader'} on ${revDate}`;
+  }
+
+  // Criteria Scores (Read-Only)
+  const setCrit = (id, val, fallback) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = `${parseFloat(val !== undefined && val !== null ? val : fallback).toFixed(1)} / 10`;
+  };
+  setCrit('sglCritSafety', crit.safety || crit['5s'], numScore >= 8 ? 9.0 : 7.5);
+  setCrit('sglCritQuality', crit.quality, numScore >= 8 ? 8.5 : 7.0);
+  setCrit('sglCritProd', crit.productivity, numScore >= 8 ? 8.5 : 7.5);
+  setCrit('sglCritAttend', crit.attendance, numScore >= 8 ? 9.5 : 8.0);
+  setCrit('sglCritKaizen', crit.kaizen, numScore >= 8 ? 8.0 : 7.0);
+
+  // TL Comments
+  const commentsEl = document.getElementById('sglAuditTLCommentsText');
+  if (commentsEl) {
+    commentsEl.textContent = emp.tlComments ? `"${emp.tlComments}"` : '"No specific comments recorded by Team Leader."';
+  }
+
+  // SGL Remarks Input
+  const remarksInput = document.getElementById('sglAuditRemarksInput');
+  if (remarksInput) {
+    remarksInput.value = emp.sglRemarks || '';
+  }
+
+  document.getElementById('sglAuditModal')?.classList.remove('hidden');
+}
+
+// SGL Modal Event Listeners
+document.getElementById('sglAuditCloseX')?.addEventListener('click', () => {
+  document.getElementById('sglAuditModal')?.classList.add('hidden');
+});
+document.getElementById('sglAuditCancelBtn')?.addEventListener('click', () => {
+  document.getElementById('sglAuditModal')?.classList.add('hidden');
+});
+document.getElementById('sglAuditOpenReportBtn')?.addEventListener('click', async () => {
+  if (currentSglAuditEmp) {
+    document.getElementById('sglAuditModal')?.classList.add('hidden');
+    await selectEmployee(currentSglAuditEmp.empCode, currentSglAuditEmp.name, currentSglAuditEmp.unitName);
+  }
+});
+document.getElementById('sglAuditSaveRemarksBtn')?.addEventListener('click', async () => {
+  if (!currentSglAuditEmp) return;
+  const remarksText = (document.getElementById('sglAuditRemarksInput')?.value || '').trim();
+  if (!remarksText) {
+    alert('Please enter verification notes or observations before saving.');
+    return;
+  }
+  const targetMonth = currentSglAuditEmp.month || (screens.historical && !screens.historical.classList.contains('hidden') ? histSelectedCycle : sglSelectedMonth);
+  try {
+    const res = await api('/api/sgl/verify', {
+      method: 'POST',
+      body: {
+        submissionId: currentSglAuditEmp.submissionId,
+        employeeId: currentSglAuditEmp.empCode,
+        month: targetMonth,
+        sglRemarks: remarksText,
+      }
+    });
+    showToast('SGL verification sign-off recorded successfully.');
+    document.getElementById('sglAuditModal')?.classList.add('hidden');
+    if (screens.historical && !screens.historical.classList.contains('hidden')) {
+      await renderHistoricalRecordsView(histSelectedCycle);
+    } else {
+      await renderSGLView(sglSelectedMonth);
+    }
+  } catch (err) {
+    alert(err.message || 'Failed to record SGL verification.');
+  }
+});
+
+// SGL Filter Pills
+document.querySelectorAll('[data-sglfilter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-sglfilter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    sglActiveFilter = btn.dataset.sglfilter || 'all';
+    applySGLDashboardView();
+  });
+});
+
+// SGL Home Search
+document.getElementById('sglHomeSearchInput')?.addEventListener('input', (e) => {
+  sglSearchQuery = e.target.value;
+  applySGLDashboardView();
+});
+
+// SGL Month Selector
+document.getElementById('sglMonthSelect')?.addEventListener('change', async (e) => {
+  await renderSGLView(e.target.value);
+});
+
+/* ============================= DEDICATED SCREEN: HISTORICAL RECORDS (SGL) ============================= */
+let histRecordsCache = [];
+let histActiveFilter = 'all';
+let histSearchQuery = '';
+let histSelectedCycle = getGlobalCycle();
+
+async function renderHistoricalRecordsView(cycle = getGlobalCycle()) {
+  histSelectedCycle = cycle;
+
+  // Highlight selected cycle pill
+  document.querySelectorAll('#histCyclePills [data-cycle]').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.cycle === histSelectedCycle);
+  });
+
+  const cycleTitle = getGlobalCycleLabel();
+  const cycleBadge = document.getElementById('histActiveCycleBadge');
+  if (cycleBadge) cycleBadge.textContent = `Cycle: ${cycleTitle}`;
+  const tableTitleCycle = document.getElementById('histTableTitleCycle');
+  if (tableTitleCycle) tableTitleCycle.textContent = cycleTitle;
+
+  const unitBadge = document.getElementById('histUnitBadge');
+  if (unitBadge) {
+    if (currentExactRole === 'Super Admin' || currentExactRole === 'HR Head') {
+      unitBadge.textContent = 'All Plants · Enterprise Oversight';
+    } else {
+      unitBadge.textContent = `${currentUnitName || 'Unit'} · Plant Supervision`;
+    }
+  }
+
+  const tbody = document.getElementById('histRecordsBody');
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--ink-dim);padding:24px;">Loading ${cycleTitle} assessment records…</td></tr>`;
+  }
+
+  try {
+    const res = await api(`/api/sgl/teams?month=${encodeURIComponent(histSelectedCycle)}`);
+    histRecordsCache = res.team || res.employees || [];
+    applyHistoricalDashboardView();
+  } catch (err) {
+    console.error('Error loading historical records:', err);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#b91c1c;padding:24px;">Failed to load historical records: ${esc(err.message || 'Server error')}</td></tr>`;
+    }
+  }
+}
+
+function applyHistoricalDashboardView() {
+  const employees = histRecordsCache || [];
+  const tbody = document.getElementById('histRecordsBody');
+  const cycleTitle = getGlobalCycleLabel();
+
+  // Compute Metrics
+  const total = employees.length;
+  const submitted = employees.filter(e => e.submissionStatus === 'evaluated' || e.submissionStatus === 'submitted' || e.submissionStatus === 'Submitted').length;
+  const evaluated = employees.filter(e => e.tlScore !== null && e.tlScore !== undefined && !isNaN(e.tlScore)).length;
+  const pending = employees.filter(e => (e.submissionStatus === 'submitted' || e.submissionStatus === 'Submitted') && (e.tlScore === null || e.tlScore === undefined)).length;
+  const notSub = total - submitted;
+
+  const scores = employees
+    .map(e => e.tlScore)
+    .filter(s => s !== null && s !== undefined && !isNaN(s));
+  const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + Number(b), 0) / scores.length).toFixed(1) : '—';
+
+  // Performance Tiers Distribution
+  const tierA = scores.filter(s => Number(s) >= 8.0).length;
+  const tierB = scores.filter(s => Number(s) >= 6.0 && Number(s) < 8.0).length;
+  const tierC = scores.filter(s => Number(s) < 6.0).length;
+
+  // Update KPI Cards
+  const kpiTotal = document.getElementById('histKpiTotal');
+  if (kpiTotal) kpiTotal.textContent = total;
+  const kpiSub = document.getElementById('histKpiSubmitted');
+  if (kpiSub) kpiSub.textContent = submitted;
+  const kpiSubRate = document.getElementById('histKpiSubRate');
+  if (kpiSubRate) kpiSubRate.textContent = total > 0 ? `${Math.round(submitted / total * 100)}% Submission` : '0% Submission';
+
+  const kpiPending = document.getElementById('histKpiPending');
+  if (kpiPending) kpiPending.textContent = pending;
+
+  const kpiEval = document.getElementById('histKpiEvaluated');
+  if (kpiEval) kpiEval.textContent = evaluated;
+  const kpiEvalRate = document.getElementById('histKpiEvalRate');
+  if (kpiEvalRate) kpiEvalRate.textContent = total > 0 ? `${Math.round(evaluated / total * 100)}% Completed` : '0% Completed';
+
+  const kpiAvg = document.getElementById('histKpiAvgScore');
+  if (kpiAvg) kpiAvg.textContent = avgScore;
+
+  // Update Tier Distribution Cards
+  const countTierA = document.getElementById('histTierA');
+  if (countTierA) countTierA.textContent = tierA;
+  const countTierB = document.getElementById('histTierB');
+  if (countTierB) countTierB.textContent = tierB;
+  const countTierC = document.getElementById('histTierC');
+  if (countTierC) countTierC.textContent = tierC;
+
+  // Update Filter Pill Counts
+  const countAll = document.getElementById('histCountAll');
+  if (countAll) countAll.textContent = total;
+  const countPending = document.getElementById('histCountPending');
+  if (countPending) countPending.textContent = pending;
+  const countEval = document.getElementById('histCountEvaluated');
+  if (countEval) countEval.textContent = evaluated;
+  const countNotSub = document.getElementById('histCountNotSub');
+  if (countNotSub) countNotSub.textContent = notSub;
+
+  // Filter & Search
+  const query = (histSearchQuery || '').toLowerCase().trim();
+  const filtered = employees.filter(emp => {
+    const isEval = (emp.tlScore !== null && emp.tlScore !== undefined && !isNaN(emp.tlScore));
+    const hasSub = (emp.submissionStatus === 'evaluated' || emp.submissionStatus === 'submitted' || emp.submissionStatus === 'Submitted');
+
+    if (histActiveFilter === 'pending' && (!hasSub || isEval)) return false;
+    if (histActiveFilter === 'evaluated' && !isEval) return false;
+    if (histActiveFilter === 'notsub' && hasSub) return false;
+
+    if (query) {
+      const mCode = (emp.empCode || '').toLowerCase().includes(query);
+      const mName = (emp.name || '').toLowerCase().includes(query);
+      const mTL = (emp.tlName || '').toLowerCase().includes(query);
+      const mDept = (emp.departmentName || '').toLowerCase().includes(query);
+      if (!mCode && !mName && !mTL && !mDept) return false;
+    }
+
+    return true;
+  });
+
+  const summaryBadge = document.getElementById('histFilterSummaryBadge');
+  if (summaryBadge) {
+    summaryBadge.textContent = `Showing ${filtered.length} of ${total} records (${cycleTitle})`;
+  }
+
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (!filtered.length) {
+    const emptyMsg = total === 0
+      ? `No employee assessment records found for ${cycleTitle} in your plant unit.`
+      : (histActiveFilter === 'pending'
+        ? `✓ No pending TL evaluations awaiting rating for ${cycleTitle}.`
+        : `No records matching search filter in ${cycleTitle}.`);
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--ink-dim);padding:24px;">${esc(emptyMsg)}</td></tr>`;
+    return;
+  }
+
+  filtered.forEach(emp => {
+    const tr = document.createElement('tr');
+    const scoreVal = (emp.tlScore !== null && emp.tlScore !== undefined) ? emp.tlScore : emp.score;
+    const isEval = (scoreVal !== null && scoreVal !== undefined && !isNaN(scoreVal));
+    const hasSub = (emp.submissionStatus === 'evaluated' || emp.submissionStatus === 'submitted' || emp.submissionStatus === 'Submitted');
+    const tlFeedback = emp.tlComments ? `"${esc(emp.tlComments)}"` : '—';
+    const roleOrDept = emp.roleName === 'Team Leader (TL)' ? 'Team Leader' : (emp.departmentName || 'Operations');
+
+    let actionButtons = `
+      <button type="button" class="btn btn-sm btn-ghost btn-hist-report" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" data-unit="${esc(emp.unitName || '')}" title="View employee monthly growth passport (Sheets 1-9)">
+        Review Report
+      </button>
+    `;
+
+    if (isEval) {
+      actionButtons += `
+        <button type="button" class="btn btn-sm btn-primary btn-hist-audit" data-emp="${esc(emp.empCode)}" title="Audit TL assessment score, criteria breakdown, feedback, and record SGL sign-off">
+          Audit TL Review
+        </button>
+      `;
+    } else if (hasSub) {
+      actionButtons += `
+        <span class="badge badge-pending" style="font-size:11px;background:#fff3cd;color:#856404;" title="Awaiting evaluation from assigned Team Leader">
+          ⏳ Awaiting TL
+        </span>
+      `;
+    }
+
+    tr.innerHTML = `
+      <td style="font-family:var(--font-mono);font-weight:700;color:#1e2a63;">${esc(emp.empCode)}</td>
+      <td style="font-weight:600;">${esc(emp.name)}</td>
+      <td>${esc(roleOrDept)}</td>
+      <td>${esc(emp.tlName || 'Unassigned TL')}</td>
+      <td>
+        <span class="badge ${hasSub ? 'badge-evaluated' : 'badge-pending'}">
+          ${hasSub ? '✓ Submitted' : 'Pending'}
+        </span>
+      </td>
+      <td>
+        ${isEval 
+          ? `<span style="font-weight:700;color:#1e2a63;">${Number(scoreVal).toFixed(1)} / 10</span> <span class="badge badge-evaluated" style="font-size:10px;">${esc(emp.ratingGrade || 'Grade A')}</span>`
+          : (hasSub 
+              ? `<span class="badge badge-pending" style="background:#fff3cd;color:#856404;font-size:11px;">⏳ Awaiting TL</span>`
+              : `<span style="color:var(--ink-dim);">—</span>`)
+        }
+      </td>
+      <td style="max-width:180px;font-size:12px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(emp.tlComments || '')}">
+        ${tlFeedback}
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          ${actionButtons}
+        </div>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.btn-hist-report').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await selectEmployee(btn.dataset.emp, btn.dataset.name, btn.dataset.unit);
+    });
+  });
+
+  tbody.querySelectorAll('.btn-hist-audit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const empCode = btn.dataset.emp;
+      const emp = histRecordsCache.find(e => e.empCode === empCode);
+      if (emp) openSglAuditModal(emp);
+    });
+  });
+}
+
+// Historical Cycle Pills
+document.querySelectorAll('#histCyclePills [data-cycle]').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const cycle = btn.dataset.cycle;
+    const parts = cycle.split('-');
+    if (parts.length === 2) {
+      await setGlobalCycle(parts[1], parts[0]);
+    } else {
+      await renderHistoricalRecordsView(cycle);
+    }
+  });
+});
+
+// Historical Filter Pills
+document.querySelectorAll('[data-histfilter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-histfilter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    histActiveFilter = btn.dataset.histfilter || 'all';
+    applyHistoricalDashboardView();
+  });
+});
+
+// Historical Search Input
+document.getElementById('histSearchInput')?.addEventListener('input', (e) => {
+  histSearchQuery = e.target.value;
+  applyHistoricalDashboardView();
+});
+
+// Historical Navigation Buttons
+document.getElementById('histBackBtn')?.addEventListener('click', () => {
+  renderHome();
+  showScreen('home');
+});
+document.getElementById('btnGoHistoricalFromHome')?.addEventListener('click', async () => {
+  await renderHistoricalRecordsView();
+  showScreen('historical');
+});
+document.getElementById('btnDirGoHistorical')?.addEventListener('click', async () => {
+  await renderHistoricalRecordsView();
+  showScreen('historical');
+});
 
 document.getElementById('goGrowthBtn').addEventListener('click', async () => {
   viewingEmpId = currentEmpId;
@@ -1226,14 +2230,14 @@ document.getElementById('goInboxBtn')?.addEventListener('click', async () => {
 /* ============================= DEDICATED SCREEN: SUBMISSIONS INBOX ============================= */
 let activeInboxFilter = 'all';
 
-async function renderInbox() {
+async function renderInbox(month = getGlobalCycle()) {
   const list = document.getElementById('inboxList');
   if (!list) return;
   list.innerHTML = '<p class="empty-note">Loading submissions…</p>';
 
   let submissions = [];
   try {
-    const res = await api('/api/inbox');
+    const res = await api(`/api/inbox?month=${encodeURIComponent(month)}`);
     submissions = res.submissions || [];
   } catch (e) {
     submissions = [];
@@ -1256,7 +2260,7 @@ async function renderInbox() {
       <div style="background:#fff;border:1px dashed var(--panel-line);border-radius:12px;padding:36px;text-align:center;">
         <div style="font-weight:700;font-size:12px;color:var(--ink-dim);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">No Submissions Found</div>
         <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--ink);">No Monthly Submissions Found</div>
-        <p style="font-size:13px;color:var(--ink-dim);margin:6px 0 0;">Submissions will appear here once shop floor operators submit their monthly growth passports.</p>
+        <p style="font-size:13px;color:var(--ink-dim);margin:6px 0 0;">Submissions for ${esc(getGlobalCycleLabel())} will appear here once shop floor operators submit their monthly growth passports.</p>
       </div>`;
     const countBadge = document.getElementById('inboxCountBadge');
     if (countBadge) countBadge.textContent = 'Showing 0 entries';
@@ -1276,41 +2280,61 @@ async function renderInbox() {
     card.dataset.unit = (sub.unitName || '').toLowerCase();
     card.dataset.status = isEval ? 'evaluated' : 'pending';
 
+    const isSglUser = currentExactRole === 'Senior Group Leader (SGL)';
+    const evalBtnText = isSglUser
+      ? 'Audit TL Review'
+      : (isEval ? 'Update Score' : 'Evaluate (1-10)');
+
     card.innerHTML = `
-      <div class="inbox-card-left">
-        <div class="inbox-card-avatar">${esc((sub.name || sub.empId || 'U').charAt(0).toUpperCase())}</div>
-        <div>
-          <div class="inbox-card-emp">
-            <span>${esc(sub.name || sub.empId)}</span>
-            <span class="who-unit">${esc(sub.empId)}</span>
-            <span class="who-unit" style="background:#f0f3fa;color:#1e2a63;">${esc(sub.unitName || 'Unit')}</span>
-            ${sub.departmentName ? `<span style="font-size:11px;color:var(--ink-dim);font-weight:500;">· ${esc(sub.departmentName)}</span>` : ''}
-          </div>
-          <div class="inbox-card-sub">
-            <span><strong>${esc(sub.month || 'October 2026')}</strong></span>
-            <span>· Submitted ${esc(when)}</span>
+        <div class="inbox-card-left">
+          <div class="inbox-card-avatar">${esc((sub.name || sub.empId || 'U').charAt(0).toUpperCase())}</div>
+          <div>
+            <div class="inbox-card-emp">
+              <span>${esc(sub.name || sub.empId)}</span>
+              <span class="who-unit">${esc(sub.empId)}</span>
+              <span class="who-unit" style="background:#f0f3fa;color:#1e2a63;">${esc(sub.unitName || 'Unit')}</span>
+              ${sub.departmentName ? `<span style="font-size:11px;color:var(--ink-dim);font-weight:500;">· ${esc(sub.departmentName)}</span>` : ''}
+            </div>
+            <div class="inbox-card-sub">
+              <span><strong>${esc(sub.month || getGlobalCycleLabel())}</strong></span>
+              <span>· Submitted ${esc(when)}</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="inbox-card-right">
-        ${isEval 
-          ? `<span class="badge badge-evaluated">Evaluated ${scoreVal ? Number(scoreVal).toFixed(1) + '/10' : ''}</span>`
-          : `<span class="badge badge-submitted">Awaiting Evaluation</span>`}
-        
-        <button class="btn btn-sm btn-primary btn-inbox-eval" data-emp="${esc(sub.empId)}" data-name="${esc(sub.name || sub.empId)}" data-score="${scoreVal || 8.5}" data-grade="${esc(sub.ratingGrade || '')}" data-comments="${esc(sub.tlComments || '')}">
-          ${isEval ? 'Update Score' : 'Evaluate (1-10)'}
-        </button>
-        <button class="btn btn-sm btn-ghost btn-inbox-open" data-emp="${esc(sub.empId)}" data-name="${esc(sub.name || sub.empId)}" data-unit="${esc(sub.unitName || '')}">
-          Open Passport
-        </button>
-      </div>`;
+        <div class="inbox-card-right">
+          ${isEval 
+            ? `<span class="badge badge-evaluated">Evaluated ${scoreVal ? Number(scoreVal).toFixed(1) + '/10' : ''}</span>`
+            : `<span class="badge badge-submitted">Awaiting Evaluation</span>`}
+          
+          <button class="btn btn-sm btn-primary btn-inbox-eval" data-emp="${esc(sub.empId)}" data-name="${esc(sub.name || sub.empId)}" data-score="${scoreVal || 8.5}" data-grade="${esc(sub.ratingGrade || '')}" data-comments="${esc(sub.tlComments || '')}">
+            ${evalBtnText}
+          </button>
+          <button class="btn btn-sm btn-ghost btn-inbox-open" data-emp="${esc(sub.empId)}" data-name="${esc(sub.name || sub.empId)}" data-unit="${esc(sub.unitName || '')}">
+            Open Passport
+          </button>
+        </div>`;
 
     card.querySelector('.btn-inbox-open')?.addEventListener('click', async () => {
       await selectEmployee(sub.empId, sub.name, sub.unitName);
     });
 
     card.querySelector('.btn-inbox-eval')?.addEventListener('click', () => {
-      openEvalModal(sub.empId, sub.name || sub.empId, sub.tlScore || sub.selfScore || 8.5, sub.ratingGrade || '', sub.tlComments || '');
+      if (isSglUser) {
+        openSglAuditModal({
+          empCode: sub.empId,
+          name: sub.name || sub.empId,
+          unitName: sub.unitName,
+          submissionId: sub.id,
+          tlScore: sub.tlScore,
+          ratingGrade: sub.ratingGrade,
+          tlComments: sub.tlComments,
+          criteriaScores: sub.criteriaScores,
+          reviewedAt: sub.reviewedAt || sub.submittedAt,
+          evaluatorName: sub.evaluatorName || 'Team Leader',
+        });
+      } else {
+        openEvalModal(sub.empId, sub.name || sub.empId, sub.tlScore || sub.selfScore || 8.5, sub.ratingGrade || '', sub.tlComments || '');
+      }
     });
 
     list.appendChild(card);
@@ -1359,7 +2383,7 @@ document.querySelectorAll('#inboxFilters .inbox-pill').forEach(btn => {
 /* ============================= DEDICATED SCREEN: TEAM & STAFF DIRECTORY ============================= */
 let activeDirectoryFilter = 'all';
 
-async function renderDirectory() {
+async function renderDirectory(month = getGlobalCycle()) {
   const dirTLView = document.getElementById('dirTLView');
   const dirUAView = document.getElementById('dirUAView');
   const dirSGLView = document.getElementById('dirSGLView');
@@ -1383,26 +2407,36 @@ async function renderDirectory() {
     if (pageTitle) pageTitle.textContent = 'Assigned Team Directory';
     if (pageLead) pageLead.textContent = `Direct shop floor operators under your supervision in ${currentUnitName || 'Unit'}. Review performance and evaluate monthly assessments.`;
     if (dirTLView) dirTLView.classList.remove('hidden');
-    await renderTLView();
+    await renderTLView(month);
   } else if (currentExactRole === 'Unit Admin') {
     if (pageTitle) pageTitle.textContent = `${currentUnitName || 'Unit'} Staff Directory`;
     if (pageLead) pageLead.textContent = `Comprehensive workforce roster and TL/SGL assessment tracking for ${currentUnitName || 'Unit'}.`;
     const uaTitle = document.getElementById('uaTableTitle');
     if (uaTitle) uaTitle.textContent = `${currentUnitName || 'Unit'} Personnel & Assessment Status`;
     if (dirUAView) dirUAView.classList.remove('hidden');
-    await renderUnitAdminView();
+    await renderUnitAdminView(month);
   } else if (currentExactRole === 'Senior Group Leader (SGL)') {
     if (pageTitle) pageTitle.textContent = 'Group Staff & Audit Directory';
     if (pageLead) pageLead.textContent = `Shop floor group overview and Team Leader score verification in ${currentUnitName || 'Unit'}.`;
     if (dirSGLView) dirSGLView.classList.remove('hidden');
-    await renderSGLView();
+    await renderSGLView(month);
   } else {
     // Super Admin / HR Head
     if (pageTitle) pageTitle.textContent = 'Cross-Plant Workforce Directory';
     if (pageLead) pageLead.textContent = 'Enterprise-wide personnel directory and assessment tracking across all 4 state units.';
     if (dirAdminView) dirAdminView.classList.remove('hidden');
-    await renderAdminStaffView();
+    await renderAdminStaffView(month);
   }
+
+  const isSuperOrHr = currentExactRole === 'Super Admin' || currentExactRole === 'HR Head';
+  const isUnitAdmin = currentExactRole === 'Unit Admin';
+  const canAdd = isSuperOrHr || isUnitAdmin;
+  const canExport = isSuperOrHr || isUnitAdmin;
+
+  const btnDirAddUser = document.getElementById('btnDirAddUser');
+  const btnDirExportCsv = document.getElementById('btnDirExportCsv');
+  if (btnDirAddUser) btnDirAddUser.style.display = canAdd ? 'inline-flex' : 'none';
+  if (btnDirExportCsv) btnDirExportCsv.style.display = canExport ? 'inline-flex' : 'none';
 
   applyDirectoryFilters();
 }
@@ -1411,42 +2445,43 @@ let adminUsersCache = [];
 let adminMetadataCache = null;
 
 async function loadAdminMetadata() {
-  if (adminMetadataCache) return adminMetadataCache;
-  try {
-    const res = await api('/api/admin/metadata');
-    adminMetadataCache = res.metadata || {};
-
-    // Populate Plant / Unit dropdown
-    const unitSelect = document.getElementById('userMgmtUnit');
-    if (unitSelect && adminMetadataCache.units) {
-      unitSelect.innerHTML = '<option value="">Select Plant / Unit...</option>' +
-        adminMetadataCache.units.map(u => `<option value="${u.id}">${esc(u.name)} (${esc(u.code || u.state)})</option>`).join('');
+  if (!adminMetadataCache) {
+    try {
+      const res = await api('/api/admin/metadata');
+      adminMetadataCache = res.metadata || {};
+    } catch (err) {
+      console.error('Failed to load admin metadata:', err);
+      return null;
     }
-
-    // Populate TL dropdown
-    const tlSelect = document.getElementById('userMgmtTL');
-    if (tlSelect && adminMetadataCache.teamLeaders) {
-      tlSelect.innerHTML = '<option value="">None / Not Applicable</option>' +
-        adminMetadataCache.teamLeaders.map(tl => `<option value="${tl.id}">${esc(tl.name)} (${esc(tl.empCode)})</option>`).join('');
-    }
-
-    // Populate SGL dropdown
-    const sglSelect = document.getElementById('userMgmtSGL');
-    if (sglSelect && adminMetadataCache.seniorGroupLeaders) {
-      sglSelect.innerHTML = '<option value="">None / Not Applicable</option>' +
-        adminMetadataCache.seniorGroupLeaders.map(sgl => `<option value="${sgl.id}">${esc(sgl.name)} (${esc(sgl.empCode)})</option>`).join('');
-    }
-
-    return adminMetadataCache;
-  } catch (err) {
-    console.error('Failed to load admin metadata:', err);
-    return null;
   }
+
+  // Populate Plant / Unit dropdown
+  const unitSelect = document.getElementById('userMgmtUnit');
+  if (unitSelect && adminMetadataCache.units && (!unitSelect.options || unitSelect.options.length <= 1)) {
+    unitSelect.innerHTML = '<option value="">Select Plant / Unit...</option>' +
+      adminMetadataCache.units.map(u => `<option value="${u.id}">${esc(u.name)} (${esc(u.code || u.state || 'Plant')})</option>`).join('');
+  }
+
+  // Populate TL dropdown
+  const tlSelect = document.getElementById('userMgmtTL');
+  if (tlSelect && adminMetadataCache.teamLeaders && (!tlSelect.options || tlSelect.options.length <= 1)) {
+    tlSelect.innerHTML = '<option value="">None / Not Applicable</option>' +
+      adminMetadataCache.teamLeaders.map(tl => `<option value="${tl.id}">${esc(tl.name)} (${esc(tl.empCode)})</option>`).join('');
+  }
+
+  // Populate SGL dropdown
+  const sglSelect = document.getElementById('userMgmtSGL');
+  if (sglSelect && adminMetadataCache.seniorGroupLeaders && (!sglSelect.options || sglSelect.options.length <= 1)) {
+    sglSelect.innerHTML = '<option value="">None / Not Applicable</option>' +
+      adminMetadataCache.seniorGroupLeaders.map(sgl => `<option value="${sgl.id}">${esc(sgl.name)} (${esc(sgl.empCode)})</option>`).join('');
+  }
+
+  return adminMetadataCache;
 }
 
-async function renderAdminStaffView() {
+async function renderAdminStaffView(month = getGlobalCycle()) {
   try {
-    const res = await api('/api/admin/users?unit=all');
+    const res = await api(`/api/admin/users?unit=all&month=${encodeURIComponent(month)}`);
     adminUsersCache = res.users || [];
     const tbody = document.getElementById('adminStaffBody');
     if (!tbody) return;
@@ -1552,9 +2587,9 @@ async function openUserMgmtModal(userToEdit = null) {
     nameInput.value = userToEdit.name || '';
     roleSelect.value = userToEdit.exactRole || userToEdit.roleName || userToEdit.role || 'Shop Floor Employee';
     unitSelect.value = userToEdit.unitId || '';
-    deptInput.value = userToEdit.department || 'Operations';
-    tlSelect.value = userToEdit.teamLeaderId || '';
-    sglSelect.value = userToEdit.seniorGroupLeaderId || '';
+    deptInput.value = userToEdit.department || userToEdit.departmentName || 'Operations';
+    tlSelect.value = userToEdit.tlId || userToEdit.teamLeaderId || '';
+    sglSelect.value = userToEdit.sglId || userToEdit.seniorGroupLeaderId || '';
     pwInput.value = '';
     pwNote.textContent = 'Leave blank to preserve existing password.';
     activeCheckbox.checked = userToEdit.isActive !== false && userToEdit.isActive !== 0;
@@ -1566,7 +2601,13 @@ async function openUserMgmtModal(userToEdit = null) {
     empCodeInput.disabled = false;
     nameInput.value = '';
     roleSelect.value = 'Shop Floor Employee';
-    unitSelect.value = '1';
+    if (currentExactRole === 'Unit Admin' && (currentUser?.unitId || currentUser?.unitName)) {
+      if (currentUser?.unitId) unitSelect.value = currentUser.unitId;
+      unitSelect.disabled = true;
+    } else {
+      unitSelect.value = '';
+      unitSelect.disabled = false;
+    }
     deptInput.value = 'Operations';
     tlSelect.value = '';
     sglSelect.value = '';
@@ -1576,6 +2617,11 @@ async function openUserMgmtModal(userToEdit = null) {
     activeLabel.textContent = 'Active & Permitted';
   }
 
+  // Toggle supervisor selection for executive roles
+  const isSuper = roleSelect.value === 'Super Admin' || roleSelect.value === 'HR Head';
+  const supBlock = document.getElementById('userMgmtSupervisorsBlock');
+  if (supBlock) supBlock.style.display = isSuper ? 'none' : 'block';
+
   modal.classList.remove('hidden');
 }
 
@@ -1584,10 +2630,10 @@ async function saveUserAccount() {
   const empCode = (document.getElementById('userMgmtEmpCode')?.value || '').trim().toUpperCase();
   const name = (document.getElementById('userMgmtName')?.value || '').trim();
   const role = document.getElementById('userMgmtRole')?.value || 'Shop Floor Employee';
-  const unitId = parseInt(document.getElementById('userMgmtUnit')?.value || '0');
+  const unitId = (document.getElementById('userMgmtUnit')?.value || '').trim();
   const department = (document.getElementById('userMgmtDept')?.value || '').trim() || 'Operations';
-  const teamLeaderId = document.getElementById('userMgmtTL')?.value ? parseInt(document.getElementById('userMgmtTL').value) : null;
-  const seniorGroupLeaderId = document.getElementById('userMgmtSGL')?.value ? parseInt(document.getElementById('userMgmtSGL').value) : null;
+  const teamLeaderId = (document.getElementById('userMgmtTL')?.value || '').trim() || null;
+  const seniorGroupLeaderId = (document.getElementById('userMgmtSGL')?.value || '').trim() || null;
   const password = (document.getElementById('userMgmtPassword')?.value || '').trim();
   const isActive = document.getElementById('userMgmtIsActive')?.checked ?? true;
 
@@ -1606,7 +2652,8 @@ async function saveUserAccount() {
     errEl.classList.remove('hidden');
     return;
   }
-  if (!unitId) {
+  const isExecutive = role === 'Super Admin' || role === 'HR Head';
+  if (!unitId && !isExecutive) {
     errEl.textContent = 'Please select a Plant / State Unit.';
     errEl.classList.remove('hidden');
     return;
@@ -1616,7 +2663,7 @@ async function saveUserAccount() {
     empCode,
     name,
     role,
-    unitId,
+    unitId: unitId || null,
     department,
     teamLeaderId,
     seniorGroupLeaderId,
@@ -1630,7 +2677,11 @@ async function saveUserAccount() {
     document.getElementById('userMgmtModal')?.classList.add('hidden');
     // Refresh admin cache and table
     adminMetadataCache = null; // Invalidate metadata cache in case a new TL/SGL was added
-    await renderAdminStaffView();
+    if (currentExactRole === 'Unit Admin') {
+      await renderUnitAdminView();
+    } else {
+      await renderAdminStaffView();
+    }
     applyDirectoryFilters();
   } catch (err) {
     if (errEl) {
@@ -1656,6 +2707,11 @@ async function toggleUserActive(empCode, currentlyActive) {
 
 // Assessment Cycle Management
 async function openCycleMgmtModal() {
+  if (currentExactRole !== 'Super Admin' && currentExactRole !== 'HR Head') {
+    showToast('Assessment Cycles can only be configured by Super Admin and HR Head.');
+    return;
+  }
+
   const modal = document.getElementById('cycleMgmtModal');
   const monthInput = document.getElementById('cycleInputMonth');
   const titleInput = document.getElementById('cycleInputTitle');
@@ -1855,6 +2911,12 @@ document.getElementById('btnDirAddUser')?.addEventListener('click', () => openUs
 document.getElementById('userMgmtCloseX')?.addEventListener('click', () => document.getElementById('userMgmtModal')?.classList.add('hidden'));
 document.getElementById('userMgmtCancelBtn')?.addEventListener('click', () => document.getElementById('userMgmtModal')?.classList.add('hidden'));
 document.getElementById('userMgmtSaveBtn')?.addEventListener('click', saveUserAccount);
+document.getElementById('userMgmtRole')?.addEventListener('change', (e) => {
+  const role = e.target.value;
+  const isSuper = role === 'Super Admin' || role === 'HR Head';
+  const supBlock = document.getElementById('userMgmtSupervisorsBlock');
+  if (supBlock) supBlock.style.display = isSuper ? 'none' : 'block';
+});
 document.getElementById('userMgmtIsActive')?.addEventListener('change', (e) => {
   const lbl = document.getElementById('userMgmtActiveLabel');
   if (lbl) lbl.textContent = e.target.checked ? 'Active & Permitted' : 'Deactivated / Login Blocked';
@@ -1862,8 +2924,17 @@ document.getElementById('userMgmtIsActive')?.addEventListener('change', (e) => {
 
 // CSV Export buttons
 function triggerCsvExport() {
+  const isSuperOrHr = currentExactRole === 'Super Admin' || currentExactRole === 'HR Head';
+  const isUnitAdmin = currentExactRole === 'Unit Admin';
+  if (!isSuperOrHr && !isUnitAdmin) {
+    showToast('Exporting reports is restricted to authorized Administrators.');
+    return;
+  }
   showToast('Generating consolidated evaluation report…');
-  window.location.href = `/api/admin/export-csv?unit=all&month=2026-10`;
+  const unit = (currentExactRole === 'Unit Admin' && (currentUser?.unitId || currentUnitName)) 
+    ? (currentUser?.unitId || currentUnitName) 
+    : (selectedUnitFilter || 'all');
+  window.location.href = `/api/admin/export-csv?unit=${encodeURIComponent(unit)}&month=${encodeURIComponent(getGlobalCycle())}`;
 }
 document.getElementById('btnAdminExportCsv')?.addEventListener('click', triggerCsvExport);
 document.getElementById('btnDirExportCsv')?.addEventListener('click', triggerCsvExport);
@@ -1873,6 +2944,158 @@ document.getElementById('btnAdminCycles')?.addEventListener('click', openCycleMg
 document.getElementById('cycleMgmtCloseX')?.addEventListener('click', () => document.getElementById('cycleMgmtModal')?.classList.add('hidden'));
 document.getElementById('cycleCloseBtn')?.addEventListener('click', () => document.getElementById('cycleMgmtModal')?.classList.add('hidden'));
 document.getElementById('btnSaveCycle')?.addEventListener('click', saveAssessmentCycle);
+
+// Unit Management (Super Admin)
+let currentUnitsList = [];
+
+async function openUnitMgmtModal() {
+  const modal = document.getElementById('unitMgmtModal');
+  const listEl = document.getElementById('unitMgmtList');
+  const errEl = document.getElementById('unitEditError');
+  const idInput = document.getElementById('unitEditId');
+  const nameInput = document.getElementById('unitEditName');
+  const codeInput = document.getElementById('unitEditCode');
+  const pwInput = document.getElementById('unitEditPassword');
+  const titleEl = document.getElementById('unitEditFormTitle');
+
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+  if (idInput) idInput.value = '';
+  if (nameInput) nameInput.value = '';
+  if (codeInput) codeInput.value = '';
+  if (pwInput) pwInput.value = '';
+  if (titleEl) titleEl.textContent = 'Select a plant above or modify below';
+
+  modal.classList.remove('hidden');
+
+  try {
+    const res = await api('/api/admin/units');
+    currentUnitsList = res.units || [];
+    if (!currentUnitsList.length) {
+      listEl.innerHTML = '<div style="color:var(--ink-dim);font-size:12px;">No plant units found.</div>';
+      return;
+    }
+
+    listEl.innerHTML = currentUnitsList.map(u => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#fff;border:1px solid var(--panel-line);border-radius:6px;">
+        <div>
+          <strong style="font-size:13.5px;color:var(--ink-main);">${esc(u.name)}</strong>
+          ${u.code ? `<span class="who-unit" style="margin-left:8px;">${esc(u.code)}</span>` : ''}
+        </div>
+        <button type="button" class="btn btn-xs btn-ghost btn-select-unit-edit" data-id="${esc(u.id)}" data-name="${esc(u.name)}" data-code="${esc(u.code || '')}" style="font-weight:700;color:var(--mahle-blue);">
+          Select to Edit ✏️
+        </button>
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll('.btn-select-unit-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        idInput.value = btn.dataset.id;
+        nameInput.value = btn.dataset.name;
+        codeInput.value = btn.dataset.code;
+        titleEl.textContent = `Rename Plant: ${btn.dataset.name}`;
+        pwInput.value = '';
+        if (errEl) errEl.classList.add('hidden');
+        nameInput.focus();
+      });
+    });
+
+    if (currentUnitsList.length > 0 && !idInput.value) {
+      const first = currentUnitsList[0];
+      idInput.value = first.id;
+      nameInput.value = first.name;
+      codeInput.value = first.code || '';
+      titleEl.textContent = `Rename Plant: ${first.name}`;
+    }
+  } catch (err) {
+    listEl.innerHTML = `<div style="color:red;font-size:12px;">Failed to load units: ${esc(err.message)}</div>`;
+  }
+}
+
+async function saveUnitEdit() {
+  const errEl = document.getElementById('unitEditError');
+  const unitId = (document.getElementById('unitEditId')?.value || '').trim();
+  const name = (document.getElementById('unitEditName')?.value || '').trim();
+  const code = (document.getElementById('unitEditCode')?.value || '').trim().toUpperCase();
+  const password = (document.getElementById('unitEditPassword')?.value || '').trim();
+
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.classList.add('hidden');
+  }
+
+  if (!unitId) {
+    errEl.textContent = 'Please select a plant unit from the list above.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (!name) {
+    errEl.textContent = 'Please enter a valid unit name.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (!password) {
+    errEl.textContent = 'Super Admin password is required to authorize changing the unit name.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    const res = await api('/api/admin/units', {
+      method: 'PATCH',
+      body: { unitId, name, code, password }
+    });
+
+    showToast(res.message || 'Unit renamed successfully');
+    document.getElementById('unitMgmtModal')?.classList.add('hidden');
+    document.getElementById('unitEditPassword').value = '';
+
+    // Invalidate metadata cache so all dropdowns refresh
+    adminMetadataCache = null;
+
+    // Refresh dynamic pills, dashboard, and metadata
+    await renderUnitFilterPills();
+    if (screens.home && !screens.home.classList.contains('hidden') && (currentExactRole === 'Super Admin' || currentExactRole === 'HR Head')) {
+      await renderAdminDashboard(selectedUnitFilter);
+    }
+    await loadAdminMetadata();
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = err.message || 'Failed to update unit.';
+      errEl.classList.remove('hidden');
+    }
+  }
+}
+
+document.getElementById('topbarManageUnitsBtn')?.addEventListener('click', openUnitMgmtModal);
+document.getElementById('unitBarEditBtn')?.addEventListener('click', openUnitMgmtModal);
+document.getElementById('unitMgmtCloseX')?.addEventListener('click', () => document.getElementById('unitMgmtModal')?.classList.add('hidden'));
+document.getElementById('unitEditCancelBtn')?.addEventListener('click', () => document.getElementById('unitMgmtModal')?.classList.add('hidden'));
+document.getElementById('unitEditSaveBtn')?.addEventListener('click', saveUnitEdit);
+
+// Global delegated click listener for unit filter pills and edit unit button
+document.addEventListener('click', async (e) => {
+  const editBtn = e.target.closest('#unitBarEditBtn, #topbarManageUnitsBtn');
+  if (editBtn) {
+    e.preventDefault();
+    openUnitMgmtModal();
+    return;
+  }
+
+  const pill = e.target.closest('#dynamicUnitPills .unit-pill, .unit-filter-bar .unit-pill');
+  if (!pill) return;
+  e.preventDefault();
+
+  const container = document.getElementById('dynamicUnitPills') || pill.parentElement;
+  if (container) {
+    container.querySelectorAll('.unit-pill').forEach(b => b.classList.remove('active'));
+  }
+  pill.classList.add('active');
+  selectedUnitFilter = pill.dataset.unit || 'all';
+  await renderAdminDashboard(selectedUnitFilter, getGlobalCycle());
+});
 
 
 /* ============================= DEDICATED SCREEN: LOOK UP EMPLOYEE ============================= */
@@ -2104,16 +3327,16 @@ async function renderMenu() {
     const menuEyebrow = document.getElementById('menuEyebrow');
     if (menuEyebrow) menuEyebrow.textContent = 'Growth Performance';
     const monthLabel = document.getElementById('submitMonthLabel');
-    if (monthLabel) monthLabel.textContent = currentMonthLabel();
+    if (monthLabel) monthLabel.textContent = getGlobalCycleLabel();
     const statusEl = document.getElementById('submitStatus');
     try {
-      const { submitted, submittedAt } = await api(`/api/my-submission?month=${encodeURIComponent(currentMonthLabel())}`);
+      const { submitted, submittedAt } = await api(`/api/my-submission?month=${encodeURIComponent(getGlobalCycle())}`);
       if (statusEl) {
         if (submitted) {
-          statusEl.textContent = `Submitted for ${currentMonthLabel()} on ${new Date(submittedAt).toLocaleString()}`;
+          statusEl.textContent = `Submitted for ${getGlobalCycleLabel()} on ${new Date(submittedAt).toLocaleString()}`;
           statusEl.classList.add('done');
         } else {
-          statusEl.textContent = `Not submitted yet for ${currentMonthLabel()}`;
+          statusEl.textContent = `Not submitted yet for ${getGlobalCycleLabel()}`;
           statusEl.classList.remove('done');
         }
       }
@@ -2133,22 +3356,28 @@ async function renderMenu() {
     btn.addEventListener('click', () => openSheet(s.id));
     grid.appendChild(btn);
   }
+  const currentCycle = month || getGlobalCycle();
   for (const s of SHEETS) {
-    const data = await loadSheetData(viewingEmpId, s.id);
+    const data = await loadSheetData(viewingEmpId, s.id, currentCycle);
     const el = grid.querySelector(`[data-status="${s.id}"]`);
     if (el) {
       const viewOnlyTag = (s.id === 'supervisor' && !isSup);
       const prefix = viewOnlyTag ? 'View only · ' : '';
-      if (data) { el.textContent = prefix + 'Completed'; el.classList.add('saved'); }
-      else { el.textContent = prefix + 'Not started'; }
+      if (data) {
+        el.textContent = prefix + 'Completed';
+        el.classList.add('saved');
+      } else {
+        el.textContent = prefix + 'Not started';
+        el.classList.remove('saved');
+      }
     }
   }
 }
 
 document.getElementById('submitBtn').addEventListener('click', async () => {
   try {
-    await api('/api/submit', { method: 'POST', body: { month: currentMonthLabel() } });
-    showToast('Submitted to supervisor');
+    await api('/api/submit', { method: 'POST', body: { month: getGlobalCycle() } });
+    showToast(`Submitted passport for ${getGlobalCycleLabel()} to supervisor`);
     renderMenu();
   } catch (e) { showToast(e.message); }
 });
@@ -2177,12 +3406,27 @@ async function openSheet(sheetId) {
 
   document.getElementById('formCrumb').textContent = `Growth Performance / ${String(meta.num).padStart(2, '0')}`;
   document.getElementById('formTitle').textContent = meta.name;
+
+  const formCycleBadge = document.getElementById('formCycleBadge');
+  if (formCycleBadge) {
+    if (sheetId === 'frontpage') {
+      formCycleBadge.textContent = 'Scope: Permanent Profile (Never Resets)';
+      formCycleBadge.className = 'badge badge-evaluated';
+    } else if (sheetId === 'swot') {
+      formCycleBadge.textContent = `Cycle: ${getGlobalCycleLabel()} (Monthly Reset)`;
+      formCycleBadge.className = 'badge badge-evaluated';
+    } else {
+      formCycleBadge.textContent = `Year: ${globalSelectedYear} (Annual Record · Resets Yearly)`;
+      formCycleBadge.className = 'badge badge-evaluated';
+    }
+  }
+
   const container = document.getElementById('sheetContainer');
   container.innerHTML = '<p style="color:#6b7290;">Loading…</p>';
   showScreen('form');
   updateEmployeeNavBar();
   updateSidebarActive();
-  const saved = await loadSheetData(viewingEmpId, sheetId);
+  const saved = await loadSheetData(viewingEmpId, sheetId, getGlobalCycle());
   container.classList.toggle('readonly', isReadOnly);
   RENDERERS[sheetId](container, saved || {});
   if (isReadOnly) {
@@ -2194,7 +3438,7 @@ async function openSheet(sheetId) {
 
 document.getElementById('saveBtn').addEventListener('click', async () => {
   const data = COLLECTORS[currentSheetId]();
-  const ok = await saveSheetData(viewingEmpId, currentSheetId, data);
+  const ok = await saveSheetData(viewingEmpId, currentSheetId, data, getGlobalCycle());
   showToast(ok ? 'Saved' : 'Could not save — try again');
 });
 
@@ -2218,6 +3462,7 @@ function monthHeaderRow(extraLeadCols){
 RENDERERS.frontpage = (el, d) => {
   el.innerHTML = `
     <h2 class="section-title">About Myself</h2>
+    <p class="small-note" style="margin-bottom:12px;color:var(--mahle-blue);font-weight:600;">Permanent Employee Profile &amp; Growth Passport Master Record. Saved permanently across all years and months.</p>
     <div class="grid-2">
       <div class="field-block"><label class="f">Name</label><input type="text" id="f_name" value="${esc(d.name)}"></div>
       <div class="field-block"><label class="f">Father's Name</label><input type="text" id="f_father" value="${esc(d.father)}"></div>
@@ -2278,12 +3523,9 @@ function attendanceTable(prefix, data){
 function emptyGrid(){ return Array.from({length:12},()=>Array(5).fill('')); }
 RENDERERS.attendance = (el, d) => {
   const now = new Date();
-  const currMonth = now.getMonth();
   const currYear = now.getFullYear();
-  const lastMonth = currMonth === 0 ? 11 : currMonth - 1;
-  const targetYear = currMonth === 0 ? currYear - 1 : currYear;
 
-  d = Object.assign({year: targetYear, regular: emptyGrid(), extra: emptyGrid()}, d);
+  d = Object.assign({year: parseInt(globalSelectedYear, 10) || currYear, regular: emptyGrid(), extra: emptyGrid()}, d);
 
   el.innerHTML = `
     <h2 class="section-title">Attendance Sheet</h2>
@@ -2291,24 +3533,12 @@ RENDERERS.attendance = (el, d) => {
       <label class="f">Year</label>
       <input type="number" id="att_year" value="${esc(d.year)}">
     </div>
-    <p class="small-note" style="margin-bottom:10px;">Note: You can only fill out attendance for the last month gone.</p>
+    <p class="small-note" style="margin-bottom:10px;color:var(--ink-dim);">Monthly attendance logs across all categories (Present, Absent, Leave, Holiday, Week Off). All months are open for filling.</p>
     <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6b6455;margin:14px 0 8px;">Attendance</h3>
     ${attendanceTable('reg', d.regular)}
     <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6b6455;margin:20px 0 8px;">Extra Work</h3>
     ${attendanceTable('ext', d.extra)}
   `;
-
-  const yearInput = el.querySelector('#att_year');
-  const updateLocks = () => {
-    const selYear = parseInt(yearInput.value, 10) || 0;
-    el.querySelectorAll('.att-reg, .att-ext').forEach(inp => {
-      const mi = parseInt(inp.dataset.m, 10);
-      const canEdit = (selYear === targetYear && mi === lastMonth);
-      inp.disabled = !canEdit;
-    });
-  };
-  yearInput.addEventListener('input', updateLocks);
-  updateLocks();
 };
 COLLECTORS.attendance = () => {
   const read = prefix => {
@@ -2481,6 +3711,7 @@ RENDERERS.swot = (el, d) => {
   d = Object.assign({strength:'',weakness:'',opportunity:'',threats:''}, d);
   el.innerHTML = `
     <h2 class="section-title">SWOT Analysis</h2>
+    <p class="small-note" style="margin-bottom:12px;color:var(--mahle-blue);font-weight:600;">Monthly Self-Evaluation Reflection for <strong>${esc(getGlobalCycleLabel())}</strong>. Resets every month to track fresh growth observations.</p>
     <div class="swot-grid">
       <div class="swot-box strength"><h3>Strength</h3><textarea id="sw_strength">${esc(d.strength)}</textarea></div>
       <div class="swot-box weakness"><h3>Weakness</h3><textarea id="sw_weakness">${esc(d.weakness)}</textarea></div>
@@ -2571,8 +3802,31 @@ const SUP_CRITERIA = [
 RENDERERS.supervisor = (el, d) => {
   d = Object.assign({name:'',area:'',scores:{},signature:''}, d);
   SUP_CRITERIA.forEach(([k])=>{ if(!d.scores[k]) d.scores[k] = Array(12).fill(''); });
+  
+  const isSup = currentRole === 'supervisor' || currentExactRole !== 'Shop Floor Employee';
+  const a = activeEmployeeInfo?.assessment;
+  const currentScore = (a && a.tlScore !== null && a.tlScore !== undefined) ? a.tlScore : (a?.score !== null && a?.score !== undefined ? a.score : null);
+  const ratingGrade = a?.ratingGrade || '';
+
+  const supBanner = isSup ? `
+    <div style="background:#eef2fa;border:1px solid #c9d5ec;border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div style="font-weight:700;font-size:14.5px;color:#1e2a63;">Official Monthly Assessment (Scale 1.0 to 10.0)</div>
+        <div style="font-size:12.5px;color:var(--ink-dim);margin-top:2px;">
+          ${currentScore !== null 
+            ? `Current Score: <strong style="color:#1e2a63;font-size:14px;">${Number(currentScore).toFixed(1)} / 10</strong> · <span class="badge badge-evaluated">${esc(ratingGrade)}</span>`
+            : 'Assessment Pending · Review performance and give official marks across criteria.'}
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary" id="btnSec10Eval">
+        ${currentScore !== null ? 'Update Rating (1-10)' : 'Give Rating / Marks &amp; Submit'}
+      </button>
+    </div>
+  ` : '';
+
   el.innerHTML = `
-    <h2 class="section-title">Supervisor Remarks</h2>
+    <h2 class="section-title">Supervisor Remarks &amp; Assessment</h2>
+    ${supBanner}
     <div class="grid-2">
       <div class="field-block"><label class="f">Name</label><input type="text" id="sr_name" value="${esc(d.name)}"></div>
       <div class="field-block"><label class="f">Area</label><input type="text" id="sr_area" value="${esc(d.area)}"></div>
@@ -2601,6 +3855,19 @@ RENDERERS.supervisor = (el, d) => {
   };
   document.querySelectorAll('.sr-cell').forEach(inp=> inp.addEventListener('input', recalcTotals));
   recalcTotals();
+
+  document.getElementById('btnSec10Eval')?.addEventListener('click', () => {
+    if (!viewingEmpId) return;
+    const ass = activeEmployeeInfo?.assessment || {};
+    openEvalModal(
+      viewingEmpId,
+      activeEmployeeInfo?.name || viewingEmpId,
+      ass.tlScore || ass.score || 8.5,
+      ass.ratingGrade || '',
+      ass.tlComments || '',
+      ass.criteriaScores || null
+    );
+  });
 };
 COLLECTORS.supervisor = () => {
   const scores = {};
@@ -2615,3 +3882,11 @@ function esc(s){
   if(s===undefined || s===null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
+// Initial cycle picker population
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', populateAllMonthYearPickers);
+} else {
+  populateAllMonthYearPickers();
+}
+
