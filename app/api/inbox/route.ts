@@ -4,14 +4,20 @@ import { getSession } from '@/lib/session';
 
 export async function GET() {
   const session = await getSession();
-  if (session?.role !== 'supervisor') return NextResponse.json({ error: 'Not signed in as supervisor.' }, { status: 401 });
-  const rows = await store.listSubmissions();
-  const result = await Promise.all(rows.map(async (r: any) => ({
-    empId: r.empId,
-    name: await store.getEmployeeName(r.empId),
-    month: r.month,
-    submittedAt: r.submittedAt,
-    status: r.status,
-  })));
-  return NextResponse.json({ submissions: result });
+  if (!session || !session.empCode) {
+    return NextResponse.json({ error: 'Not signed in.' }, { status: 401 });
+  }
+
+  const user = await store.getUserByEmpCode(session.empCode);
+  if (!user || user.role === 'Shop Floor Employee') {
+    return NextResponse.json({ error: 'Not authorized for supervisor inbox.' }, { status: 403 });
+  }
+
+  const rows = await store.listSubmissions({
+    role: user.role,
+    userId: user.id,
+    unitId: user.unitId,
+  });
+
+  return NextResponse.json({ submissions: rows });
 }
