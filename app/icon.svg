@@ -1,1 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#000"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="mahleBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00358e"/>
+      <stop offset="100%" stop-color="#001a47"/>
+    </linearGradient>
+    <linearGradient id="cyanAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0077c8"/>
+      <stop offset="50%" stop-color="#00a3e0"/>
+      <stop offset="100%" stop-color="#38c6f4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Premium Rounded Badge -->
+  <rect width="128" height="128" rx="26" fill="url(#mahleBg)"/>
+  <rect x="1" y="1" width="126" height="126" rx="25" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2"/>
+
+  <!-- Iconic MAHLE 'M' in Crisp Pure White -->
+  <path d="M 24,94 L 24,28 L 43,28 L 64,64 L 85,28 L 104,28 L 104,94 L 86,94 L 86,52 L 71,78 L 57,78 L 42,52 L 42,94 Z" fill="#ffffff"/>
+
+  <!-- High-Tech MAHLE Anand Accent Bar -->
+  <rect x="24" y="102" width="80" height="7" rx="3.5" fill="url(#cyanAccent)"/>
+</svg>
