@@ -1,10 +1,10 @@
 -- ============================================================================
 -- MAHLE ANAND GROWTH PASSPORT - 3 PLANTS DATA SEED SCRIPT (SSMS)
--- Plants: Gurugram, Parwanoo, Pune
--- Total Personnel Seeded: 537 records
+-- Plants: Gurugram (267), Parwanoo (101), Pune (169)
+-- Total Personnel Seeded: 537 real records (Zero Dummy Data)
 -- Target Database: GrowthPortal
 -- Compatible with: SQL Server 2017 / 2019 / 2022 / Azure SQL
--- Date Generated: 2026-10-21 14:21:26
+-- Date Generated: 2026-10-21 16:38:17
 -- ============================================================================
 SET NOCOUNT ON;
 GO
@@ -16,7 +16,136 @@ BEGIN TRY
 BEGIN TRANSACTION;
 
 -- ----------------------------------------------------------------------------
--- 1. ENSURE SYSTEM ROLES EXIST
+-- 0. ENSURE CORE DATABASE TABLES EXIST
+-- ----------------------------------------------------------------------------
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'Unit')
+BEGIN
+    CREATE TABLE [dbo].[Unit] (
+        [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        [name] NVARCHAR(1000) NOT NULL UNIQUE,
+        [code] NVARCHAR(50) NULL,
+        [isActive] BIT NOT NULL DEFAULT 1,
+        [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+END;
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'Department')
+BEGIN
+    CREATE TABLE [dbo].[Department] (
+        [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        [name] NVARCHAR(1000) NOT NULL,
+        [unitId] NVARCHAR(1000) NOT NULL
+    );
+END;
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'Role')
+BEGIN
+    CREATE TABLE [dbo].[Role] (
+        [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        [name] NVARCHAR(1000) NOT NULL UNIQUE
+    );
+END;
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'AssessmentCycle')
+BEGIN
+    CREATE TABLE [dbo].[AssessmentCycle] (
+        [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        [month] NVARCHAR(20) NOT NULL UNIQUE,
+        [title] NVARCHAR(100) NOT NULL,
+        [status] NVARCHAR(50) NOT NULL DEFAULT 'open',
+        [startDate] DATETIME2 NULL,
+        [endDate] DATETIME2 NULL,
+        [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+END;
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'User')
+BEGIN
+    CREATE TABLE [dbo].[User] (
+        [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        [empCode] NVARCHAR(1000) NOT NULL UNIQUE,
+        [name] NVARCHAR(1000) NULL,
+        [passwordHash] NVARCHAR(1000) NULL,
+        [isActive] BIT NOT NULL DEFAULT 1,
+        [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        [roleId] NVARCHAR(1000) NULL,
+        [unitId] NVARCHAR(1000) NULL,
+        [departmentId] NVARCHAR(1000) NULL,
+        [tlId] NVARCHAR(1000) NULL,
+        [sglId] NVARCHAR(1000) NULL,
+        [fatherName] NVARCHAR(1000) NULL,
+        [mobile] NVARCHAR(50) NULL,
+        [email] NVARCHAR(255) NULL,
+        [joiningDate] NVARCHAR(50) NULL,
+        [dob] NVARCHAR(50) NULL,
+        [designation] NVARCHAR(255) NULL,
+        [groupJoiningDate] NVARCHAR(50) NULL,
+        [gradeCode] NVARCHAR(50) NULL
+    );
+END;
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'MonthlySubmission')
+BEGIN
+    CREATE TABLE [dbo].[MonthlySubmission] (
+        [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        [empId] NVARCHAR(1000) NOT NULL,
+        [month] NVARCHAR(1000) NOT NULL,
+        [status] NVARCHAR(1000) NOT NULL DEFAULT 'pending',
+        [selfScore] DECIMAL(4,2) NULL,
+        [submittedAt] DATETIME2 NULL,
+        [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT [MonthlySubmission_emp_m_uk] UNIQUE ([empId], [month])
+    );
+END;
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'AssessmentReview')
+BEGIN
+    CREATE TABLE [dbo].[AssessmentReview] (
+        [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        [submissionId] NVARCHAR(1000) NOT NULL UNIQUE,
+        [evaluatorId] NVARCHAR(1000) NOT NULL,
+        [score] DECIMAL(4,2) NOT NULL,
+        [ratingGrade] NVARCHAR(50) NULL,
+        [criteriaScores] VARCHAR(MAX) NULL,
+        [tlComments] NVARCHAR(MAX) NULL,
+        [sglRemarks] NVARCHAR(MAX) NULL,
+        [status] NVARCHAR(50) NOT NULL DEFAULT 'completed',
+        [reviewedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+END;
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'SheetData')
+BEGIN
+    CREATE TABLE [dbo].[SheetData] (
+        [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        [empId] NVARCHAR(1000) NOT NULL,
+        [sheetId] NVARCHAR(1000) NOT NULL,
+        [data] VARCHAR(MAX) NOT NULL,
+        [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT [SheetData_emp_sheet_uk] UNIQUE ([empId], [sheetId])
+    );
+END;
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'MasterItem')
+BEGIN
+    CREATE TABLE [dbo].[MasterItem] (
+        [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+        [type] NVARCHAR(50) NOT NULL,
+        [title] NVARCHAR(500) NOT NULL,
+        [category] NVARCHAR(100) NULL,
+        [sortOrder] INT NOT NULL DEFAULT 0,
+        [isActive] BIT NOT NULL DEFAULT 1,
+        [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+END;
+
+-- ----------------------------------------------------------------------------
+-- 2. ENSURE SYSTEM ROLES EXIST
 -- ----------------------------------------------------------------------------
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Role] WHERE [name] = 'Super Admin')
     INSERT INTO [dbo].[Role] ([id], [name]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Super Admin');
@@ -37,30 +166,21 @@ BEGIN
 END
 
 -- ----------------------------------------------------------------------------
--- 2. ENSURE 3 PLANT UNITS EXIST (GURUGRAM, PARWANOO, PUNE)
+-- 3. SEED ONLY THE 3 ACTUAL PLANTS (GURUGRAM, PARWANOO, PUNE)
 -- ----------------------------------------------------------------------------
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Unit] WHERE [name] = 'Gurugram')
     INSERT INTO [dbo].[Unit] ([id], [name], [code], [isActive]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Gurugram', 'GGN', 1);
-ELSE
-    UPDATE [dbo].[Unit] SET [code] = 'GGN', [isActive] = 1 WHERE [name] = 'Gurugram';
-
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Unit] WHERE [name] = 'Parwanoo')
     INSERT INTO [dbo].[Unit] ([id], [name], [code], [isActive]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Parwanoo', 'PRW', 1);
-ELSE
-    UPDATE [dbo].[Unit] SET [code] = 'PRW', [isActive] = 1 WHERE [name] = 'Parwanoo';
-
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Unit] WHERE [name] = 'Pune')
     INSERT INTO [dbo].[Unit] ([id], [name], [code], [isActive]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Pune', 'PUN', 1);
-ELSE
-    UPDATE [dbo].[Unit] SET [code] = 'PUN', [isActive] = 1 WHERE [name] = 'Pune';
 
--- Resolve Unit IDs
 DECLARE @unitGurugram NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Unit] WHERE [name] = 'Gurugram');
 DECLARE @unitParwanoo NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Unit] WHERE [name] = 'Parwanoo');
 DECLARE @unitPune     NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Unit] WHERE [name] = 'Pune');
 
 -- ----------------------------------------------------------------------------
--- 3. ENSURE STANDARD DEPARTMENTS EXIST FOR ALL 3 PLANTS
+-- 4. SEED STANDARD DEPARTMENTS FOR THE 3 PLANTS
 -- ----------------------------------------------------------------------------
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Manufacturing / Production' AND [unitId] = @unitGurugram)
     INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Manufacturing / Production', @unitGurugram);
@@ -87,12 +207,10 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Operations' AND 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Operations' AND [unitId] = @unitPune)
     INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Operations', @unitPune);
 
--- Resolve Primary Manufacturing Departments for each plant
 DECLARE @deptGgn NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Department] WHERE [name] = 'Manufacturing / Production' AND [unitId] = @unitGurugram);
 DECLARE @deptPrw NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Department] WHERE [name] = 'Manufacturing / Production' AND [unitId] = @unitParwanoo);
 DECLARE @deptPun NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Department] WHERE [name] = 'Manufacturing / Production' AND [unitId] = @unitPune);
 
--- Resolve Role IDs
 DECLARE @rSuperAdmin NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Role] WHERE [name] = 'Super Admin');
 DECLARE @rHrHead     NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Role] WHERE [name] = 'HR Head');
 DECLARE @rUnitAdmin  NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Role] WHERE [name] = 'Unit Admin');
@@ -100,7 +218,6 @@ DECLARE @rSGL        NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Role] WHERE
 DECLARE @rTL         NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Role] WHERE [name] = 'Team Leader (TL)');
 DECLARE @rEmployee   NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Role] WHERE [name] = 'Employee');
 
--- Default password hash for initial user access: 'Mahle@123'
 DECLARE @defaultHash NVARCHAR(1000) = '$2b$10$QMNEYLpTPQHBfP36DMeGl.p094MbfOfESkryZmI/pi7FFoIT7w8aC';
 
 -- ============================================================================
@@ -16229,9 +16346,9 @@ BEGIN
 END
 
 -- ============================================================================
--- 4. ESTABLISH SUPERVISORY REPORTING HIERARCHY WITHIN EACH PLANT
+-- 5. ESTABLISH SUPERVISORY REPORTING HIERARCHY WITHIN EACH PLANT
 -- ============================================================================
--- 4.1 Link Team Leaders (TL) to Senior Group Leaders (SGL) in the same plant
+-- 5.1 Link Team Leaders (TL) to Senior Group Leaders (SGL) in the same plant
 
 ;WITH TlCTE AS (
     SELECT id, unitId, ROW_NUMBER() OVER (PARTITION BY unitId ORDER BY empCode) AS rn
@@ -16250,7 +16367,7 @@ FROM [dbo].[User] t
 JOIN TlCTE tc ON t.id = tc.id
 JOIN SglCTE s ON tc.unitId = s.unitId AND ((tc.rn - 1) % s.sglCount) + 1 = s.rn;
 
--- 4.2 Link Employees to Team Leaders (TL) and SGLs in the same plant
+-- 5.2 Link Employees to Team Leaders (TL) and SGLs in the same plant
 
 ;WITH EmpCTE AS (
     SELECT id, unitId, ROW_NUMBER() OVER (PARTITION BY unitId ORDER BY empCode) AS rn
@@ -16272,13 +16389,13 @@ JOIN TlCTE t ON ec.unitId = t.unitId AND ((ec.rn - 1) % t.tlCount) + 1 = t.rn;
 
 COMMIT TRANSACTION;
 PRINT '============================================================================';
-PRINT 'Successfully seeded 3 plants (537 records) into GrowthPortal!';
+PRINT 'SUCCESS: Plant data seeded cleanly with zero dummy data (537 real records)!';
 PRINT '============================================================================';
 
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-    PRINT 'Error during plant seeding: ' + ERROR_MESSAGE();
+    PRINT 'Error during execution: ' + ERROR_MESSAGE();
     THROW;
 END CATCH;
 GO

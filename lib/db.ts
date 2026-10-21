@@ -131,22 +131,151 @@ const store = {
     try {
       const pool = await getPool();
       await pool.request().query(`
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'fatherName')
-          ALTER TABLE [dbo].[User] ADD [fatherName] NVARCHAR(1000);
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'mobile')
-          ALTER TABLE [dbo].[User] ADD [mobile] NVARCHAR(50);
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'email')
-          ALTER TABLE [dbo].[User] ADD [email] NVARCHAR(255);
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'joiningDate')
-          ALTER TABLE [dbo].[User] ADD [joiningDate] NVARCHAR(50);
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'dob')
-          ALTER TABLE [dbo].[User] ADD [dob] NVARCHAR(50);
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'designation')
-          ALTER TABLE [dbo].[User] ADD [designation] NVARCHAR(255);
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'groupJoiningDate')
-          ALTER TABLE [dbo].[User] ADD [groupJoiningDate] NVARCHAR(50);
-        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'gradeCode')
-          ALTER TABLE [dbo].[User] ADD [gradeCode] NVARCHAR(50);
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'Unit')
+        BEGIN
+          CREATE TABLE [dbo].[Unit] (
+            [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+            [name] NVARCHAR(1000) NOT NULL UNIQUE,
+            [code] NVARCHAR(50) NULL,
+            [isActive] BIT NOT NULL DEFAULT 1,
+            [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+          );
+        END;
+
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'Department')
+        BEGIN
+          CREATE TABLE [dbo].[Department] (
+            [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+            [name] NVARCHAR(1000) NOT NULL,
+            [unitId] NVARCHAR(1000) NOT NULL
+          );
+        END;
+
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'Role')
+        BEGIN
+          CREATE TABLE [dbo].[Role] (
+            [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+            [name] NVARCHAR(1000) NOT NULL UNIQUE
+          );
+        END;
+
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'AssessmentCycle')
+        BEGIN
+          CREATE TABLE [dbo].[AssessmentCycle] (
+            [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+            [month] NVARCHAR(20) NOT NULL UNIQUE,
+            [title] NVARCHAR(100) NOT NULL,
+            [status] NVARCHAR(50) NOT NULL DEFAULT 'open',
+            [startDate] DATETIME2 NULL,
+            [endDate] DATETIME2 NULL,
+            [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+          );
+        END;
+
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'User')
+        BEGIN
+          CREATE TABLE [dbo].[User] (
+            [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+            [empCode] NVARCHAR(1000) NOT NULL UNIQUE,
+            [name] NVARCHAR(1000) NULL,
+            [passwordHash] NVARCHAR(1000) NULL,
+            [isActive] BIT NOT NULL DEFAULT 1,
+            [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+            [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+            [roleId] NVARCHAR(1000) NULL,
+            [unitId] NVARCHAR(1000) NULL,
+            [departmentId] NVARCHAR(1000) NULL,
+            [tlId] NVARCHAR(1000) NULL,
+            [sglId] NVARCHAR(1000) NULL,
+            [fatherName] NVARCHAR(1000) NULL,
+            [mobile] NVARCHAR(50) NULL,
+            [email] NVARCHAR(255) NULL,
+            [joiningDate] NVARCHAR(50) NULL,
+            [dob] NVARCHAR(50) NULL,
+            [designation] NVARCHAR(255) NULL,
+            [groupJoiningDate] NVARCHAR(50) NULL,
+            [gradeCode] NVARCHAR(50) NULL
+          );
+        END;
+
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'MonthlySubmission')
+        BEGIN
+          CREATE TABLE [dbo].[MonthlySubmission] (
+            [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+            [empId] NVARCHAR(1000) NOT NULL,
+            [month] NVARCHAR(1000) NOT NULL,
+            [status] NVARCHAR(1000) NOT NULL DEFAULT 'pending',
+            [selfScore] DECIMAL(4,2) NULL,
+            [submittedAt] DATETIME2 NULL,
+            [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+            [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+            CONSTRAINT [MonthlySubmission_emp_m_uk] UNIQUE ([empId], [month])
+          );
+        END;
+
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'AssessmentReview')
+        BEGIN
+          CREATE TABLE [dbo].[AssessmentReview] (
+            [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+            [submissionId] NVARCHAR(1000) NOT NULL UNIQUE,
+            [evaluatorId] NVARCHAR(1000) NOT NULL,
+            [score] DECIMAL(4,2) NOT NULL,
+            [ratingGrade] NVARCHAR(50) NULL,
+            [criteriaScores] VARCHAR(MAX) NULL,
+            [tlComments] NVARCHAR(MAX) NULL,
+            [sglRemarks] NVARCHAR(MAX) NULL,
+            [status] NVARCHAR(50) NOT NULL DEFAULT 'completed',
+            [reviewedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+            [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+          );
+        END;
+
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'SheetData')
+        BEGIN
+          CREATE TABLE [dbo].[SheetData] (
+            [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+            [empId] NVARCHAR(1000) NOT NULL,
+            [sheetId] NVARCHAR(1000) NOT NULL,
+            [data] VARCHAR(MAX) NOT NULL,
+            [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+            CONSTRAINT [SheetData_emp_sheet_uk] UNIQUE ([empId], [sheetId])
+          );
+        END;
+
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'MasterItem')
+        BEGIN
+          CREATE TABLE [dbo].[MasterItem] (
+            [id] NVARCHAR(1000) NOT NULL PRIMARY KEY,
+            [type] NVARCHAR(50) NOT NULL,
+            [title] NVARCHAR(500) NOT NULL,
+            [category] NVARCHAR(100) NULL,
+            [sortOrder] INT NOT NULL DEFAULT 0,
+            [isActive] BIT NOT NULL DEFAULT 1,
+            [createdAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+            [updatedAt] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+          );
+        END;
+
+        -- Ensure extended columns if table existed without them
+        IF EXISTS (SELECT * FROM sys.tables WHERE name = N'User')
+        BEGIN
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'fatherName')
+            ALTER TABLE [dbo].[User] ADD [fatherName] NVARCHAR(1000);
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'mobile')
+            ALTER TABLE [dbo].[User] ADD [mobile] NVARCHAR(50);
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'email')
+            ALTER TABLE [dbo].[User] ADD [email] NVARCHAR(255);
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'joiningDate')
+            ALTER TABLE [dbo].[User] ADD [joiningDate] NVARCHAR(50);
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'dob')
+            ALTER TABLE [dbo].[User] ADD [dob] NVARCHAR(50);
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'designation')
+            ALTER TABLE [dbo].[User] ADD [designation] NVARCHAR(255);
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'groupJoiningDate')
+            ALTER TABLE [dbo].[User] ADD [groupJoiningDate] NVARCHAR(50);
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'gradeCode')
+            ALTER TABLE [dbo].[User] ADD [gradeCode] NVARCHAR(50);
+        END;
       `);
     } catch (err) {
       console.warn('Notice in ensureUserExtraColumns:', err);
