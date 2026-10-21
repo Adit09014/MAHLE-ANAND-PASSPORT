@@ -4,7 +4,7 @@ import { getSession } from '@/lib/session';
 
 function isEmployee(session: any) {
   if (!session) return false;
-  return session.role === 'employee' || session.role === 'Shop Floor Employee' || session.exactRole === 'Shop Floor Employee';
+  return session.role === 'employee' || session.role === 'Employee' || session.role === 'Shop Floor Employee' || session.exactRole === 'Employee' || session.exactRole === 'Shop Floor Employee';
 }
 
 export async function GET(req: Request) {

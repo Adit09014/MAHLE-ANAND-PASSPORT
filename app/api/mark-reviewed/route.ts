@@ -4,7 +4,7 @@ import { getSession } from '@/lib/session';
 
 function isSupervisor(session: any) {
   if (!session) return false;
-  return session.role === 'supervisor' || (session.role !== 'employee' && session.exactRole !== 'Shop Floor Employee');
+  return session.role === 'supervisor' || (session.role !== 'employee' && session.exactRole !== 'Employee' && session.exactRole !== 'Shop Floor Employee');
 }
 
 export async function POST(req: Request) {

@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   let targetEmpCode = session.empCode;
   const requestedEmpCode = url.searchParams.get('empCode');
 
-  if (requestedEmpCode && session.role !== 'Shop Floor Employee') {
+  if (requestedEmpCode && session.role !== 'Employee' && session.role !== 'Shop Floor Employee' && session.exactRole !== 'Employee' && session.exactRole !== 'Shop Floor Employee') {
     targetEmpCode = requestedEmpCode.trim().toUpperCase();
   }
 

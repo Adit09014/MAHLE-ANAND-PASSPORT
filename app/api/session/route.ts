@@ -31,8 +31,8 @@ export async function GET() {
     ok: true,
     user: profile,
     // Backwards-compatibility properties
-    role: profile.role === 'Shop Floor Employee' ? 'employee' : 'supervisor',
-    exactRole: profile.role,
+    role: (profile.role === 'Employee' || profile.role === 'Shop Floor Employee' || profile.role === 'employee') ? 'employee' : 'supervisor',
+    exactRole: profile.role === 'Shop Floor Employee' ? 'Employee' : profile.role,
     id: profile.empCode,
     name: profile.name,
     unitName: profile.unitName,

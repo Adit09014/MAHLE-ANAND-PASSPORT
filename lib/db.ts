@@ -15,6 +15,14 @@ export interface UserProfile {
   sglId?: string | null;
   sglName?: string | null;
   isActive: boolean;
+  fatherName?: string | null;
+  mobile?: string | null;
+  email?: string | null;
+  joiningDate?: string | null;
+  dob?: string | null;
+  designation?: string | null;
+  groupJoiningDate?: string | null;
+  gradeCode?: string | null;
 }
 
 export interface ReviewData {
@@ -27,18 +35,63 @@ export interface ReviewData {
   sglRemarks?: string;
 }
 
+export interface MasterItem {
+  id: string;
+  type: 'training' | 'activity';
+  title: string;
+  category?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+const DEFAULT_TRAINING_ITEMS = [
+  'APS -4 Day',
+  'APS Refresher',
+  'TPM',
+  'SPC',
+  'PFEMA',
+  'EMS',
+  'Product Process Knowledge',
+  'Sales',
+  'Others',
+];
+
+const DEFAULT_ACTIVITY_ITEMS = [
+  'Participation in Committees',
+  'Sports',
+  'First Aid',
+  'Safety Committee',
+  'Canteen Committee',
+  'Cultural Activities',
+  'Participation in CI-meet',
+];
+
 async function getRoleId(roleName: string): Promise<string> {
   const pool = await getPool();
+  const searchName = roleName === 'Shop Floor Employee' ? 'Employee' : roleName;
   const res = await pool.request()
-    .input('name', sql.NVarChar, roleName)
+    .input('name', sql.NVarChar, searchName)
     .query('SELECT id FROM [Role] WHERE name = @name');
 
   if (res.recordset.length > 0) {
     return res.recordset[0].id;
   }
 
+  if (searchName === 'Employee') {
+    const sfeRes = await pool.request()
+      .query("SELECT id FROM [Role] WHERE name = 'Shop Floor Employee'");
+    if (sfeRes.recordset.length > 0) {
+      try {
+        await pool.request().query("UPDATE [Role] SET name = 'Employee' WHERE name = 'Shop Floor Employee'");
+      } catch (e) {}
+      return sfeRes.recordset[0].id;
+    }
+  }
+
   const insertRes = await pool.request()
-    .input('name', sql.NVarChar, roleName)
+    .input('name', sql.NVarChar, searchName)
     .query(`
       DECLARE @newId NVARCHAR(1000) = CAST(NEWID() AS NVARCHAR(1000));
       INSERT INTO [Role] (id, name) VALUES (@newId, @name);
@@ -48,7 +101,7 @@ async function getRoleId(roleName: string): Promise<string> {
   return insertRes.recordset[0].id;
 }
 
-async function getOrCreateUserId(empCode: string, defaultRole = 'Shop Floor Employee'): Promise<string> {
+async function getOrCreateUserId(empCode: string, defaultRole = 'Employee'): Promise<string> {
   const pool = await getPool();
   const res = await pool.request()
     .input('empCode', sql.NVarChar, empCode)
@@ -74,7 +127,34 @@ async function getOrCreateUserId(empCode: string, defaultRole = 'Shop Floor Empl
 
 const store = {
   /* ---------------- user & role resolution ---------------- */
+  async ensureUserExtraColumns() {
+    try {
+      const pool = await getPool();
+      await pool.request().query(`
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'fatherName')
+          ALTER TABLE [dbo].[User] ADD [fatherName] NVARCHAR(1000);
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'mobile')
+          ALTER TABLE [dbo].[User] ADD [mobile] NVARCHAR(50);
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'email')
+          ALTER TABLE [dbo].[User] ADD [email] NVARCHAR(255);
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'joiningDate')
+          ALTER TABLE [dbo].[User] ADD [joiningDate] NVARCHAR(50);
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'dob')
+          ALTER TABLE [dbo].[User] ADD [dob] NVARCHAR(50);
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'designation')
+          ALTER TABLE [dbo].[User] ADD [designation] NVARCHAR(255);
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'groupJoiningDate')
+          ALTER TABLE [dbo].[User] ADD [groupJoiningDate] NVARCHAR(50);
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[User]') AND name = 'gradeCode')
+          ALTER TABLE [dbo].[User] ADD [gradeCode] NVARCHAR(50);
+      `);
+    } catch (err) {
+      console.warn('Notice in ensureUserExtraColumns:', err);
+    }
+  },
+
   async getUserByEmpCode(empCode: string): Promise<any | null> {
+    await this.ensureUserExtraColumns();
     const pool = await getPool();
     const res = await pool.request()
       .input('empCode', sql.NVarChar, empCode)
@@ -89,6 +169,14 @@ const store = {
           u.departmentId,
           u.tlId,
           u.sglId,
+          u.fatherName,
+          u.mobile,
+          u.email,
+          u.joiningDate,
+          u.dob,
+          u.designation,
+          u.groupJoiningDate,
+          u.gradeCode,
           r.name AS role,
           un.name AS unitName,
           un.code AS unitCode,
@@ -104,11 +192,16 @@ const store = {
         WHERE u.empCode = @empCode
       `);
 
-    return res.recordset.length > 0 ? res.recordset[0] : null;
+    if (res.recordset.length === 0) return null;
+    const user = res.recordset[0];
+    if (user.role === 'Shop Floor Employee') {
+      user.role = 'Employee';
+    }
+    return user;
   },
 
   async upsertEmployeeIfMissing(id: string) {
-    await getOrCreateUserId(id, 'Shop Floor Employee');
+    await getOrCreateUserId(id, 'Employee');
   },
 
   async setEmployeeName(id: string, name: string) {
@@ -123,7 +216,7 @@ const store = {
         .input('name', sql.NVarChar, name)
         .query('UPDATE [User] SET name = @name, updatedAt = SYSUTCDATETIME() WHERE empCode = @empCode');
     } else {
-      const roleId = await getRoleId('Shop Floor Employee');
+      const roleId = await getRoleId('Employee');
       await pool.request()
         .input('empCode', sql.NVarChar, id)
         .input('name', sql.NVarChar, name)
@@ -291,7 +384,7 @@ const store = {
       LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
       LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
       LEFT JOIN [User] evaluator ON ar.evaluatorId = evaluator.id
-      WHERE u.isActive = 1 AND r.name = 'Shop Floor Employee'
+      WHERE u.isActive = 1 AND (r.name = 'Employee' OR r.name = 'Shop Floor Employee')
     `;
 
     if (!isAllForAdmin) {
@@ -317,6 +410,7 @@ const store = {
       }
       return {
         ...row,
+        roleName: row.roleName === 'Shop Floor Employee' ? 'Employee' : row.roleName,
         criteriaScores: parsedCrit,
       };
     });
@@ -387,7 +481,7 @@ const store = {
       LEFT JOIN [Department] d ON u.departmentId = d.id
       LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
       LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
-      WHERE u.isActive = 1 AND r.name = 'Shop Floor Employee'
+      WHERE u.isActive = 1 AND (r.name = 'Employee' OR r.name = 'Shop Floor Employee')
     `;
 
     if (unitFilter && unitFilter !== 'all') {
@@ -397,7 +491,10 @@ const store = {
 
     query += ` ORDER BY un.name, d.name, u.empCode`;
     const res = await request.query(query);
-    return res.recordset;
+    return res.recordset.map((row: any) => ({
+      ...row,
+      roleName: row.roleName === 'Shop Floor Employee' ? 'Employee' : row.roleName,
+    }));
   },
 
   /* ---------------- assessment reviews (1 to 10 scale) ---------------- */
@@ -518,7 +615,7 @@ const store = {
         COUNT(DISTINCT CASE WHEN m.status = 'submitted' THEN m.id END) AS pendingReviewCount,
         ROUND(AVG(ar.score), 2) AS averageScore
       FROM [User] u
-      JOIN [Role] r ON u.roleId = r.id AND r.name = 'Shop Floor Employee'
+      JOIN [Role] r ON u.roleId = r.id AND (r.name = 'Employee' OR r.name = 'Shop Floor Employee')
       LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
       LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
       WHERE u.isActive = 1
@@ -545,7 +642,7 @@ const store = {
           COUNT(DISTINCT CASE WHEN m.status = 'evaluated' THEN m.id END) AS evaluatedCount,
           ROUND(AVG(ar.score), 2) AS avgScore
         FROM [Unit] un
-        LEFT JOIN [User] u ON un.id = u.unitId AND u.isActive = 1 AND u.roleId IN (SELECT id FROM [Role] WHERE name = 'Shop Floor Employee')
+        LEFT JOIN [User] u ON un.id = u.unitId AND u.isActive = 1 AND u.roleId IN (SELECT id FROM [Role] WHERE name IN ('Employee', 'Shop Floor Employee'))
         LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
         LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
         GROUP BY un.id, un.name, un.code
@@ -562,7 +659,7 @@ const store = {
         COUNT(DISTINCT CASE WHEN m.status = 'evaluated' THEN m.id END) AS evaluatedCount,
         ROUND(AVG(ar.score), 2) AS avgScore
       FROM [Department] d
-      JOIN [User] u ON d.id = u.departmentId AND u.isActive = 1 AND u.roleId IN (SELECT id FROM [Role] WHERE name = 'Shop Floor Employee')
+      JOIN [User] u ON d.id = u.departmentId AND u.isActive = 1 AND u.roleId IN (SELECT id FROM [Role] WHERE name IN ('Employee', 'Shop Floor Employee'))
       LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
       LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
     `;
@@ -588,7 +685,7 @@ const store = {
       FROM [User] sgl
       JOIN [Role] sr ON sgl.roleId = sr.id AND sr.name = 'Senior Group Leader (SGL)'
       LEFT JOIN [Unit] un ON sgl.unitId = un.id
-      LEFT JOIN [User] u ON (u.sglId = sgl.id OR u.sglId = sgl.empCode) AND u.isActive = 1 AND u.roleId IN (SELECT id FROM [Role] WHERE name = 'Shop Floor Employee')
+      LEFT JOIN [User] u ON (u.sglId = sgl.id OR u.sglId = sgl.empCode) AND u.isActive = 1 AND u.roleId IN (SELECT id FROM [Role] WHERE name IN ('Employee', 'Shop Floor Employee'))
       LEFT JOIN [MonthlySubmission] m ON u.id = m.empId AND m.month = @month
       LEFT JOIN [AssessmentReview] ar ON m.id = ar.submissionId
       WHERE sgl.isActive = 1
@@ -656,12 +753,13 @@ const store = {
         WHERE u.empCode = @empCode AND s.sheetId = @sheetId
       `);
 
+    let parsed: any = null;
     if (res.recordset.length > 0) {
-      try { return JSON.parse(res.recordset[0].data); } catch { return null; }
+      try { parsed = JSON.parse(res.recordset[0].data); } catch { parsed = null; }
     }
 
     // 2. Fallback to legacy unadorned key if applicable for baseline
-    if (fallbackKey && fallbackKey !== storageKey) {
+    if (!parsed && fallbackKey && fallbackKey !== storageKey) {
       const fbRes = await pool.request()
         .input('empCode', sql.NVarChar, empCode)
         .input('sheetId', sql.NVarChar, fallbackKey)
@@ -673,16 +771,107 @@ const store = {
         `);
 
       if (fbRes.recordset.length > 0) {
-        try { return JSON.parse(fbRes.recordset[0].data); } catch { return null; }
+        try { parsed = JSON.parse(fbRes.recordset[0].data); } catch { parsed = null; }
       }
     }
 
-    return null;
+    // 3. Auto-populate About Myself (frontpage) from User Master profile
+    if (sheetId === 'frontpage') {
+      const user = await this.getUserByEmpCode(empCode);
+      if (user) {
+        if (!parsed) parsed = {};
+        if (!parsed.name && user.name) parsed.name = user.name;
+        if (!parsed.father && user.fatherName) parsed.father = user.fatherName;
+        if (!parsed.dob && user.dob) parsed.dob = user.dob;
+        if (!parsed.doj && user.joiningDate) parsed.doj = user.joiningDate;
+        if (!parsed.mobile && user.mobile) parsed.mobile = user.mobile;
+        if (!parsed.email && user.email) parsed.email = user.email;
+        if (!parsed.designation && user.designation) parsed.designation = user.designation;
+        if (!parsed.groupDoj && user.groupJoiningDate) parsed.groupDoj = user.groupJoiningDate;
+        if (!parsed.gradeCode && user.gradeCode) parsed.gradeCode = user.gradeCode;
+        if (!parsed.empCode) parsed.empCode = user.empCode;
+      }
+    }
+
+    // 4. Auto-populate & Synchronize Supervisor Remarks (sheet 10) from AssessmentReview evaluations
+    if (sheetId === 'supervisor') {
+      const user = await this.getUserByEmpCode(empCode);
+      if (!parsed) {
+        parsed = {
+          name: user?.name || empCode,
+          area: user?.departmentName || 'Operations',
+          scores: {},
+          signature: ''
+        };
+      }
+      if (!parsed.name && user?.name) parsed.name = user.name;
+      if (!parsed.area && user?.departmentName) parsed.area = user.departmentName;
+      if (!parsed.scores) parsed.scores = {};
+
+      const SUP_KEYS = [
+        'Performance on the Job',
+        'Attendance',
+        'Work Performance',
+        'Line Performance',
+        'Recognition',
+        'Documentation (Growth File)',
+        'AHPS / LEAN Participation'
+      ];
+
+      for (const k of SUP_KEYS) {
+        if (!parsed.scores[k] || !Array.isArray(parsed.scores[k])) {
+          parsed.scores[k] = Array(12).fill('');
+        }
+      }
+
+      try {
+        const year = (cycle || '2026').split('-')[0];
+        const revRes = await pool.request()
+          .input('empCode', sql.NVarChar, empCode)
+          .input('yearPrefix', sql.NVarChar, `${year}-%`)
+          .query(`
+            SELECT m.month, r.score, r.ratingGrade, r.criteriaScores, r.tlComments, u.name AS evaluatorName
+            FROM [AssessmentReview] r
+            JOIN [MonthlySubmission] m ON r.submissionId = m.id
+            JOIN [User] eu ON m.empId = eu.id
+            LEFT JOIN [User] u ON r.evaluatorId = u.id
+            WHERE eu.empCode = @empCode AND m.month LIKE @yearPrefix
+          `);
+
+        for (const row of revRes.recordset) {
+          const parts = String(row.month || '').split('-');
+          const mNum = parseInt(parts[1] || '0', 10);
+          if (mNum >= 1 && mNum <= 12) {
+            const mi = mNum - 1;
+            if (row.evaluatorName && !parsed.signature) {
+              parsed.signature = row.evaluatorName;
+            }
+            let crit: any = null;
+            try {
+              crit = row.criteriaScores ? JSON.parse(row.criteriaScores) : null;
+            } catch {}
+
+            if (crit && typeof crit === 'object') {
+              for (const k of SUP_KEYS) {
+                const val = crit[k] ?? crit[k.toLowerCase()];
+                if (val !== undefined && val !== null && val !== '') {
+                  parsed.scores[k][mi] = val;
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error syncing supervisor sheet with AssessmentReview in getSheetData:', err);
+      }
+    }
+
+    return parsed;
   },
 
   async setSheetData(empCode: string, sheetId: string, sheetContent: any, cycle: string = '2026-10') {
     const { storageKey, fallbackKey } = this.resolveSheetStorageKey(sheetId, cycle);
-    const userId = await getOrCreateUserId(empCode, 'Shop Floor Employee');
+    const userId = await getOrCreateUserId(empCode, 'Employee');
     const pool = await getPool();
     const dataStr = JSON.stringify(sheetContent);
 
@@ -723,11 +912,45 @@ const store = {
             VALUES (CAST(NEWID() AS NVARCHAR(1000)), @empId, @sheetId, @data, SYSUTCDATETIME())
         `);
     }
+
+    // When frontpage (About Myself) is saved, sync profile fields back to [User]
+    if (sheetId === 'frontpage' && sheetContent) {
+      try {
+        await this.ensureUserExtraColumns();
+        await pool.request()
+          .input('empCode', sql.NVarChar, empCode)
+          .input('name', sql.NVarChar, sheetContent.name ? String(sheetContent.name).trim() : null)
+          .input('fatherName', sql.NVarChar, sheetContent.father ? String(sheetContent.father).trim() : null)
+          .input('dob', sql.NVarChar, sheetContent.dob ? String(sheetContent.dob).trim() : null)
+          .input('joiningDate', sql.NVarChar, sheetContent.doj ? String(sheetContent.doj).trim() : null)
+          .input('mobile', sql.NVarChar, sheetContent.mobile ? String(sheetContent.mobile).trim() : null)
+          .input('email', sql.NVarChar, sheetContent.email ? String(sheetContent.email).trim() : null)
+          .input('designation', sql.NVarChar, sheetContent.designation ? String(sheetContent.designation).trim() : null)
+          .input('groupJoiningDate', sql.NVarChar, sheetContent.groupDoj ? String(sheetContent.groupDoj).trim() : null)
+          .input('gradeCode', sql.NVarChar, sheetContent.gradeCode ? String(sheetContent.gradeCode).trim() : null)
+          .query(`
+            UPDATE [User]
+            SET name = COALESCE(@name, name),
+                fatherName = COALESCE(@fatherName, fatherName),
+                dob = COALESCE(@dob, dob),
+                joiningDate = COALESCE(@joiningDate, joiningDate),
+                mobile = COALESCE(@mobile, mobile),
+                email = COALESCE(@email, email),
+                designation = COALESCE(@designation, designation),
+                groupJoiningDate = COALESCE(@groupJoiningDate, groupJoiningDate),
+                gradeCode = COALESCE(@gradeCode, gradeCode),
+                updatedAt = SYSUTCDATETIME()
+            WHERE empCode = @empCode
+          `);
+      } catch (err) {
+        console.warn('Sync frontpage to User failed:', err);
+      }
+    }
   },
 
   /* ---------------- monthly submissions ---------------- */
   async upsertSubmission(empCode: string, month: string, selfScore?: number) {
-    const userId = await getOrCreateUserId(empCode, 'Shop Floor Employee');
+    const userId = await getOrCreateUserId(empCode, 'Employee');
     const pool = await getPool();
 
     // Ensure cycle exists in AssessmentCycle
@@ -925,6 +1148,14 @@ const store = {
         u.name,
         u.isActive,
         u.createdAt,
+        u.fatherName,
+        u.mobile,
+        u.email,
+        u.joiningDate,
+        u.dob,
+        u.designation,
+        u.groupJoiningDate,
+        u.gradeCode,
         r.name AS roleName,
         r.id AS roleId,
         un.id AS unitId,
@@ -965,8 +1196,12 @@ const store = {
     }
 
     if (filters.role && filters.role !== 'all') {
-      request.input('roleFilter', sql.NVarChar, filters.role);
-      query += ` AND (r.name = @roleFilter)`;
+      if (filters.role === 'Employee' || filters.role === 'Shop Floor Employee') {
+        query += ` AND (r.name = 'Employee' OR r.name = 'Shop Floor Employee')`;
+      } else {
+        request.input('roleFilter', sql.NVarChar, filters.role);
+        query += ` AND (r.name = @roleFilter)`;
+      }
     }
 
     if (filters.status === 'active') {
@@ -983,13 +1218,18 @@ const store = {
           WHEN 'Unit Admin' THEN 3
           WHEN 'Senior Group Leader (SGL)' THEN 4
           WHEN 'Team Leader (TL)' THEN 5
-          ELSE 6
+          WHEN 'Employee' THEN 6
+          WHEN 'Shop Floor Employee' THEN 6
+          ELSE 7
         END,
         un.name, u.empCode
     `;
 
     const res = await request.query(query);
-    return res.recordset;
+    return res.recordset.map((row: any) => ({
+      ...row,
+      roleName: row.roleName === 'Shop Floor Employee' ? 'Employee' : row.roleName,
+    }));
   },
 
   async getAdminMetadata() {
@@ -1019,7 +1259,10 @@ const store = {
     return {
       units: units.recordset,
       departments: depts.recordset,
-      roles: roles.recordset,
+      roles: roles.recordset.map((r: any) => ({
+        ...r,
+        name: r.name === 'Shop Floor Employee' ? 'Employee' : r.name,
+      })),
       teamLeaders: tls.recordset,
       seniorGroupLeaders: sgls.recordset,
     };
@@ -1132,6 +1375,156 @@ const store = {
         `);
       return { ok: true, action: 'created', month };
     }
+  },
+
+  /* ---------------- master training matrix & activities catalog ---------------- */
+  async ensureMasterItemTable() {
+    try {
+      const pool = await getPool();
+      await pool.request().query(`
+        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'MasterItem')
+        BEGIN
+          CREATE TABLE [dbo].[MasterItem] (
+            [id] NVARCHAR(1000) NOT NULL,
+            [type] NVARCHAR(50) NOT NULL,
+            [title] NVARCHAR(500) NOT NULL,
+            [category] NVARCHAR(100) NULL,
+            [sortOrder] INT NOT NULL DEFAULT 0,
+            [isActive] BIT NOT NULL DEFAULT 1,
+            [createdAt] DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            [updatedAt] DATETIME2 NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT [MasterItem_pkey] PRIMARY KEY CLUSTERED ([id])
+          );
+        END
+      `);
+
+      const trCount = await pool.request().query("SELECT COUNT(*) AS cnt FROM [MasterItem] WHERE [type] = 'training'");
+      if ((trCount.recordset[0]?.cnt || 0) === 0) {
+        for (let i = 0; i < DEFAULT_TRAINING_ITEMS.length; i++) {
+          const title = DEFAULT_TRAINING_ITEMS[i];
+          await pool.request()
+            .input('type', sql.NVarChar, 'training')
+            .input('title', sql.NVarChar, title)
+            .input('sortOrder', sql.Int, i + 1)
+            .query(`
+              INSERT INTO [MasterItem] (id, type, title, sortOrder, isActive, createdAt, updatedAt)
+              VALUES (CAST(NEWID() AS NVARCHAR(1000)), @type, @title, @sortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME())
+            `);
+        }
+      }
+
+      const acCount = await pool.request().query("SELECT COUNT(*) AS cnt FROM [MasterItem] WHERE [type] = 'activity'");
+      if ((acCount.recordset[0]?.cnt || 0) === 0) {
+        for (let i = 0; i < DEFAULT_ACTIVITY_ITEMS.length; i++) {
+          const title = DEFAULT_ACTIVITY_ITEMS[i];
+          await pool.request()
+            .input('type', sql.NVarChar, 'activity')
+            .input('title', sql.NVarChar, title)
+            .input('sortOrder', sql.Int, i + 1)
+            .query(`
+              INSERT INTO [MasterItem] (id, type, title, sortOrder, isActive, createdAt, updatedAt)
+              VALUES (CAST(NEWID() AS NVARCHAR(1000)), @type, @title, @sortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME())
+            `);
+        }
+      }
+    } catch (err) {
+      console.warn('Notice in ensureMasterItemTable:', err);
+    }
+  },
+
+  async listMasterItems() {
+    try {
+      await this.ensureMasterItemTable();
+      const pool = await getPool();
+      const res = await pool.request().query(`
+        SELECT id, type, title, category, sortOrder, isActive, createdAt, updatedAt
+        FROM [MasterItem]
+        WHERE isActive = 1
+        ORDER BY sortOrder ASC, createdAt ASC
+      `);
+
+      const trainings = res.recordset.filter((r: any) => r.type === 'training');
+      const activities = res.recordset.filter((r: any) => r.type === 'activity');
+
+      return {
+        trainings: trainings.length ? trainings : DEFAULT_TRAINING_ITEMS.map((t, i) => ({ id: `default-tr-${i}`, type: 'training', title: t, sortOrder: i + 1 })),
+        activities: activities.length ? activities : DEFAULT_ACTIVITY_ITEMS.map((a, i) => ({ id: `default-ac-${i}`, type: 'activity', title: a, sortOrder: i + 1 })),
+      };
+    } catch (err) {
+      console.warn('Fallback in listMasterItems:', err);
+      return {
+        trainings: DEFAULT_TRAINING_ITEMS.map((t, i) => ({ id: `default-tr-${i}`, type: 'training', title: t, sortOrder: i + 1 })),
+        activities: DEFAULT_ACTIVITY_ITEMS.map((a, i) => ({ id: `default-ac-${i}`, type: 'activity', title: a, sortOrder: i + 1 })),
+      };
+    }
+  },
+
+  async addMasterItem(type: 'training' | 'activity', title: string, category?: string) {
+    await this.ensureMasterItemTable();
+    const cleanTitle = String(title).trim();
+    if (!cleanTitle) throw new Error('Title cannot be empty.');
+
+    const pool = await getPool();
+
+    const existing = await pool.request()
+      .input('type', sql.NVarChar, type)
+      .input('title', sql.NVarChar, cleanTitle)
+      .query('SELECT TOP 1 id, isActive FROM [MasterItem] WHERE type = @type AND title = @title');
+
+    if (existing.recordset.length > 0) {
+      const row = existing.recordset[0];
+      if (!row.isActive) {
+        await pool.request()
+          .input('id', sql.NVarChar, row.id)
+          .query('UPDATE [MasterItem] SET isActive = 1, updatedAt = SYSUTCDATETIME() WHERE id = @id');
+        return { ok: true, action: 'reactivated', id: row.id, title: cleanTitle, type };
+      }
+      throw new Error(`"${cleanTitle}" already exists in ${type === 'training' ? 'Training Matrix' : 'Activities'}.`);
+    }
+
+    const sortRes = await pool.request()
+      .input('type', sql.NVarChar, type)
+      .query('SELECT COALESCE(MAX(sortOrder), 0) + 1 AS nextSort FROM [MasterItem] WHERE type = @type');
+    const nextSort = sortRes.recordset[0]?.nextSort || 1;
+
+    const insertRes = await pool.request()
+      .input('type', sql.NVarChar, type)
+      .input('title', sql.NVarChar, cleanTitle)
+      .input('category', sql.NVarChar, category || null)
+      .input('sortOrder', sql.Int, nextSort)
+      .query(`
+        DECLARE @newId NVARCHAR(1000) = CAST(NEWID() AS NVARCHAR(1000));
+        INSERT INTO [MasterItem] (id, type, title, category, sortOrder, isActive, createdAt, updatedAt)
+        VALUES (@newId, @type, @title, @category, @sortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+        SELECT @newId AS id;
+      `);
+
+    return {
+      ok: true,
+      success: true,
+      action: 'created',
+      id: insertRes.recordset[0].id,
+      type,
+      title: cleanTitle,
+      sortOrder: nextSort,
+    };
+  },
+
+  async deleteMasterItem(id: string, type?: string, title?: string) {
+    await this.ensureMasterItemTable();
+    const pool = await getPool();
+
+    let query = 'DELETE FROM [MasterItem] WHERE id = @id';
+    const req = pool.request().input('id', sql.NVarChar, id);
+
+    if (type && title) {
+      req.input('type', sql.NVarChar, type);
+      req.input('title', sql.NVarChar, title);
+      query += ' OR (type = @type AND title = @title)';
+    }
+
+    await req.query(query);
+    return { ok: true, success: true, action: 'deleted', id };
   },
 };
 

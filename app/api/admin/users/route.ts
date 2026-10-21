@@ -71,23 +71,59 @@ export async function POST(req: Request) {
     const password = body.password;
     const isActive = body.isActive;
 
+    // Personnel & Service Profile Fields
+    const fatherName = body.fatherName !== undefined && body.fatherName !== null ? String(body.fatherName).trim() : null;
+    const mobile = body.mobile !== undefined && body.mobile !== null ? String(body.mobile).trim() : null;
+    const email = body.email !== undefined && body.email !== null ? String(body.email).trim() : null;
+    const joiningDate = body.joiningDate !== undefined && body.joiningDate !== null ? String(body.joiningDate).trim() : null;
+    const dob = body.dob !== undefined && body.dob !== null ? String(body.dob).trim() : null;
+    const designation = body.designation !== undefined && body.designation !== null ? String(body.designation).trim() : null;
+    const groupJoiningDate = body.groupJoiningDate !== undefined && body.groupJoiningDate !== null ? String(body.groupJoiningDate).trim() : null;
+    const gradeCode = body.gradeCode !== undefined && body.gradeCode !== null ? String(body.gradeCode).trim() : null;
+
     if (!empCode || !name || !roleName) {
       return NextResponse.json({ error: 'Employee Code, Full Name, and Role are required.' }, { status: 400 });
     }
 
+    if (!joiningDate) {
+      return NextResponse.json({ error: 'Date of Joining (Joined On) is required.' }, { status: 400 });
+    }
+
     const codeUpper = String(empCode).trim().toUpperCase();
+    await store.ensureUserExtraColumns();
     const pool = await getPool();
 
     // Resolve Role ID
+    let roleId: string | null = null;
+    let resolvedRoleName: string = String(roleName).trim();
     const roleRes = await pool.request()
-      .input('name', sql.NVarChar, String(roleName).trim())
-      .query('SELECT TOP 1 id, name FROM [Role] WHERE name = @name OR name LIKE @name + \'%\'');
+      .input('name', sql.NVarChar, resolvedRoleName)
+      .query(`
+        SELECT TOP 1 id, name FROM [Role] 
+        WHERE name = @name 
+           OR (@name = 'Employee' AND name = 'Shop Floor Employee')
+           OR (@name = 'Shop Floor Employee' AND name = 'Employee')
+           OR name LIKE @name + '%'
+      `);
 
     if (roleRes.recordset.length === 0) {
-      return NextResponse.json({ error: `Role '${roleName}' not found.` }, { status: 400 });
+      if (resolvedRoleName === 'Employee') {
+        const insertRes = await pool.request()
+          .input('name', sql.NVarChar, 'Employee')
+          .query(`
+            DECLARE @newId NVARCHAR(1000) = CAST(NEWID() AS NVARCHAR(1000));
+            INSERT INTO [Role] (id, name) VALUES (@newId, @name);
+            SELECT @newId AS id, @name AS name;
+          `);
+        roleId = insertRes.recordset[0].id;
+        resolvedRoleName = 'Employee';
+      } else {
+        return NextResponse.json({ error: `Role '${roleName}' not found.` }, { status: 400 });
+      }
+    } else {
+      roleId = roleRes.recordset[0].id;
+      resolvedRoleName = roleRes.recordset[0].name === 'Shop Floor Employee' ? 'Employee' : roleRes.recordset[0].name;
     }
-    const roleId = roleRes.recordset[0].id;
-    const resolvedRoleName = roleRes.recordset[0].name;
 
     // Resolve Unit ID
     let targetUnitId: string | null = null;
@@ -184,6 +220,14 @@ export async function POST(req: Request) {
         .input('sglId', sql.NVarChar, targetSglId || null)
         .input('passwordHash', sql.NVarChar, finalHash)
         .input('isActive', sql.Bit, activeBit)
+        .input('fatherName', sql.NVarChar, fatherName)
+        .input('mobile', sql.NVarChar, mobile)
+        .input('email', sql.NVarChar, email)
+        .input('joiningDate', sql.NVarChar, joiningDate)
+        .input('dob', sql.NVarChar, dob)
+        .input('designation', sql.NVarChar, designation)
+        .input('groupJoiningDate', sql.NVarChar, groupJoiningDate)
+        .input('gradeCode', sql.NVarChar, gradeCode)
         .query(`
           UPDATE [User]
           SET name = @name,
@@ -194,9 +238,41 @@ export async function POST(req: Request) {
               sglId = @sglId,
               passwordHash = @passwordHash,
               isActive = @isActive,
+              fatherName = @fatherName,
+              mobile = @mobile,
+              email = @email,
+              joiningDate = @joiningDate,
+              dob = @dob,
+              designation = @designation,
+              groupJoiningDate = @groupJoiningDate,
+              gradeCode = @gradeCode,
               updatedAt = SYSUTCDATETIME()
           WHERE empCode = @empCode
         `);
+
+      // Auto-populate / Synchronize Sheet 01 ("About Myself" - frontpage)
+      try {
+        const existingFront = await store.getSheetData(codeUpper, 'frontpage');
+        const frontData = Object.assign({}, existingFront || {}, {
+          empCode: codeUpper,
+          name: name.trim(),
+          father: fatherName || existingFront?.father || '',
+          dob: dob || existingFront?.dob || '',
+          doj: joiningDate || existingFront?.doj || '',
+          mobile: mobile || existingFront?.mobile || '',
+          email: email || existingFront?.email || '',
+          designation: designation || existingFront?.designation || '',
+          gradeCode: gradeCode || existingFront?.gradeCode || '',
+          groupDoj: groupJoiningDate || existingFront?.groupDoj || '',
+          permAddr: existingFront?.permAddr || '',
+          corrAddr: existingFront?.corrAddr || '',
+          phone1: existingFront?.phone1 || '',
+          phone2: existingFront?.phone2 || '',
+        });
+        await store.setSheetData(codeUpper, 'frontpage', frontData);
+      } catch (fErr) {
+        console.warn('Auto-fill frontpage failed:', fErr);
+      }
 
       return NextResponse.json({ ok: true, message: `Account ${codeUpper} updated successfully.`, empCode: codeUpper });
     } else {
@@ -213,10 +289,49 @@ export async function POST(req: Request) {
         .input('sglId', sql.NVarChar, targetSglId || null)
         .input('passwordHash', sql.NVarChar, finalHash)
         .input('isActive', sql.Bit, activeBit)
+        .input('fatherName', sql.NVarChar, fatherName)
+        .input('mobile', sql.NVarChar, mobile)
+        .input('email', sql.NVarChar, email)
+        .input('joiningDate', sql.NVarChar, joiningDate)
+        .input('dob', sql.NVarChar, dob)
+        .input('designation', sql.NVarChar, designation)
+        .input('groupJoiningDate', sql.NVarChar, groupJoiningDate)
+        .input('gradeCode', sql.NVarChar, gradeCode)
         .query(`
-          INSERT INTO [User] (id, empCode, name, roleId, unitId, departmentId, tlId, sglId, passwordHash, isActive, createdAt, updatedAt)
-          VALUES (CAST(NEWID() AS NVARCHAR(1000)), @empCode, @name, @roleId, @unitId, @departmentId, @tlId, @sglId, @passwordHash, @isActive, SYSUTCDATETIME(), SYSUTCDATETIME())
+          INSERT INTO [User] (
+            id, empCode, name, roleId, unitId, departmentId, tlId, sglId, 
+            passwordHash, isActive, fatherName, mobile, email, joiningDate, 
+            dob, designation, groupJoiningDate, gradeCode, createdAt, updatedAt
+          )
+          VALUES (
+            CAST(NEWID() AS NVARCHAR(1000)), @empCode, @name, @roleId, @unitId, @departmentId, @tlId, @sglId, 
+            @passwordHash, @isActive, @fatherName, @mobile, @email, @joiningDate, 
+            @dob, @designation, @groupJoiningDate, @gradeCode, SYSUTCDATETIME(), SYSUTCDATETIME()
+          )
         `);
+
+      // Auto-populate / Synchronize Sheet 01 ("About Myself" - frontpage) for new member
+      try {
+        const frontData = {
+          empCode: codeUpper,
+          name: name.trim(),
+          father: fatherName || '',
+          dob: dob || '',
+          doj: joiningDate || '',
+          mobile: mobile || '',
+          email: email || '',
+          designation: designation || '',
+          gradeCode: gradeCode || '',
+          groupDoj: groupJoiningDate || '',
+          permAddr: '',
+          corrAddr: '',
+          phone1: '',
+          phone2: '',
+        };
+        await store.setSheetData(codeUpper, 'frontpage', frontData);
+      } catch (fErr) {
+        console.warn('Auto-fill frontpage failed:', fErr);
+      }
 
       return NextResponse.json({ ok: true, message: `Account ${codeUpper} created successfully.`, empCode: codeUpper });
     }

@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   }
 
   const user = await store.getUserByEmpCode(session.empCode);
-  if (!user || user.role === 'Shop Floor Employee') {
+  if (!user || user.role === 'Employee' || user.role === 'Shop Floor Employee') {
     return NextResponse.json({ error: 'Not authorized for supervisor inbox.' }, { status: 403 });
   }
 

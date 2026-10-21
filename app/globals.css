@@ -339,10 +339,24 @@
   }
   .sheet .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .sheet .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-  .sheet label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b6455;margin-bottom:5px;font-family:var(--font-mono);}
-  .sheet input[type=text], .sheet input[type=number], .sheet input[type=date], .sheet textarea{
-    width:100%;background:#fff;border:1px solid var(--paper-line);border-radius:6px;padding:9px 10px;
-    color:var(--paper-ink);font-size:14px;
+  .sheet input[type=text],
+  .sheet input[type=number],
+  .sheet input[type=date],
+  .sheet input[type=tel],
+  .sheet input[type=email],
+  .sheet input[type=password],
+  .sheet textarea,
+  .sheet select,
+  .field-block input,
+  .field-block textarea,
+  .field-block select{
+    width:100%;box-sizing:border-box;background:#fff;border:1px solid var(--paper-line);border-radius:6px;padding:9px 12px;
+    color:var(--paper-ink);font-size:14px;font-family:inherit;line-height:1.4;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .sheet input:focus, .sheet textarea:focus, .sheet select:focus,
+  .field-block input:focus, .field-block textarea:focus, .field-block select:focus{
+    outline:none;border-color:var(--mahle-blue);box-shadow:0 0 0 3px rgba(30,42,99,0.12);
   }
   .sheet textarea{resize:vertical;min-height:64px;font-family:var(--font-body);}
   .field-block{margin-bottom:16px;}
@@ -1655,6 +1669,29 @@
     justify-content: space-between;
     border-top: 1px solid #f0f2f8;
     padding-top: 10px;
+  }
+
+  /* High-contrast and crisp numbers for Supervisor Remarks in view-only / disabled state */
+  #sheetContainer.readonly input:disabled,
+  #sheetContainer.readonly select:disabled,
+  #sheetContainer.readonly textarea:disabled {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    cursor: default !important;
+    font-weight: 600 !important;
+  }
+
+  .sr-cell:disabled {
+    color: #1e2a63 !important;
+    -webkit-text-fill-color: #1e2a63 !important;
+    font-weight: 800 !important;
+    opacity: 1 !important;
+    background-color: #f1f5f9 !important;
+    text-align: center;
+    border-color: #cbd5e1 !important;
   }
 
 

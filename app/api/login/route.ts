@@ -24,7 +24,8 @@ export async function POST(req: Request) {
 
       // Check password according to role
       let isPasswordValid = false;
-      if (user.role === 'Shop Floor Employee') {
+      const isEmployee = user.role === 'Employee' || user.role === 'Shop Floor Employee';
+      if (isEmployee) {
         // Employee password defaults to employee code unless a custom password hash is set
         if (user.passwordHash) {
           isPasswordValid = bcrypt.compareSync(passwordStr, user.passwordHash) || (idUpper.toLowerCase() === passwordStr.toLowerCase());
@@ -42,14 +43,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Incorrect password.' }, { status: 401 });
       }
 
-      const isEmployee = user.role === 'Shop Floor Employee';
+      const exactRole = isEmployee ? 'Employee' : user.role;
       const sessionPayload = {
         id: user.empCode,
         userId: user.id,
         empCode: user.empCode,
         name: user.name || user.empCode,
         role: isEmployee ? 'employee' : 'supervisor',
-        exactRole: user.role,
+        exactRole,
         unitId: user.unitId || null,
         unitName: user.unitName || null,
         unitCode: user.unitCode || null,
@@ -66,14 +67,14 @@ export async function POST(req: Request) {
         user: sessionPayload,
         // Backwards compatibility fields for legacy frontend
         role: isEmployee ? 'employee' : 'supervisor',
-        exactRole: user.role,
+        exactRole,
         id: user.empCode,
         name: user.name,
         unitName: user.unitName,
       });
     }
 
-    // 2. Fallback: Auto-provision new Shop Floor Employee if ID starts with KA or NTK
+    // 2. Fallback: Auto-provision new Employee if ID starts with KA or NTK
     if (/^(KA|NTK)/i.test(idUpper)) {
       if (idUpper.toLowerCase() !== passwordStr.toLowerCase()) {
         return NextResponse.json({ error: 'Incorrect Employee ID or password.' }, { status: 401 });
@@ -88,7 +89,7 @@ export async function POST(req: Request) {
         empCode: newUser.empCode,
         name: newUser.name || newUser.empCode,
         role: 'employee',
-        exactRole: 'Shop Floor Employee',
+        exactRole: 'Employee',
         unitId: newUser.unitId || null,
         unitName: newUser.unitName || null,
         unitCode: newUser.unitCode || null,
@@ -104,7 +105,7 @@ export async function POST(req: Request) {
         ok: true,
         user: sessionPayload,
         role: 'employee',
-        exactRole: 'Shop Floor Employee',
+        exactRole: 'Employee',
         id: newUser.empCode,
         name: newUser.name,
       });

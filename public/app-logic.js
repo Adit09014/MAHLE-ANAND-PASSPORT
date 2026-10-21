@@ -9,15 +9,14 @@ const SHEETS = [
   {id:'attendance', num:3,  name:'Attendance Sheet',                sub:'Daily attendance & extra work'},
   {id:'iip',        num:4,  name:'IIP Matrix',                      sub:'Improvement ideas & benefits'},
   {id:'training',   num:5,  name:'Training Matrix',                 sub:'On-the-job & program training'},
-  {id:'keylearning',num:6,  name:'Key Learnings',                   sub:'Skills acquired by month'},
-  {id:'activities', num:7,  name:'Activities',                      sub:'Participation in plant activities'},
-  {id:'swot',       num:8,  name:'SWOT Analysis',                   sub:'Strengths, weaknesses, opportunities, threats'},
-  {id:'selfdev',    num:9,  name:'Self Development Course Details', sub:'Technical & non-technical courses'},
-  {id:'supervisor', num:10, name:'Supervisor Remarks',              sub:'Ratings & sign-off'},
+  {id:'activities', num:6,  name:'Activities',                      sub:'Participation in plant activities'},
+  {id:'swot',       num:7,  name:'SWOT Analysis',                   sub:'Strengths, weaknesses, opportunities, threats'},
+  {id:'selfdev',    num:8,  name:'Self Development Course Details', sub:'Technical & non-technical courses'},
+  {id:'supervisor', num:9,  name:'Supervisor Remarks',              sub:'Ratings & sign-off'},
 ];
 
 let currentRole = null;      // 'employee' | 'supervisor' (legacy)
-let currentExactRole = null; // 'Super Admin' | 'HR Head' | 'Unit Admin' | 'Senior Group Leader (SGL)' | 'Team Leader (TL)' | 'Shop Floor Employee'
+let currentExactRole = null; // 'Super Admin' | 'HR Head' | 'Unit Admin' | 'Senior Group Leader (SGL)' | 'Team Leader (TL)' | 'Employee'
 let currentUser = null;
 let currentUnitName = null;
 let currentEmpId = null;     // whoever is logged in
@@ -44,7 +43,7 @@ async function api(path, opts = {}) {
 
 async function loadSheetData(empId, sheetId, cycle = getGlobalCycle()) {
   try {
-    const isSup = currentRole === 'supervisor' || currentExactRole !== 'Shop Floor Employee';
+    const isSup = currentRole === 'supervisor' || (currentExactRole !== 'Employee' && currentExactRole !== 'Shop Floor Employee');
     const cParam = `cycle=${encodeURIComponent(cycle || getGlobalCycle())}`;
     const path = (isSup && sheetId !== 'supervisor')
       ? `/api/employee/${empId}/sheet/${sheetId}?${cParam}`
@@ -55,7 +54,7 @@ async function loadSheetData(empId, sheetId, cycle = getGlobalCycle()) {
 }
 async function saveSheetData(empId, sheetId, data, cycle = getGlobalCycle()) {
   try {
-    const isSup = currentRole === 'supervisor' || currentExactRole !== 'Shop Floor Employee';
+    const isSup = currentRole === 'supervisor' || (currentExactRole !== 'Employee' && currentExactRole !== 'Shop Floor Employee');
     const cParam = `cycle=${encodeURIComponent(cycle || getGlobalCycle())}`;
     const path = isSup
       ? `/api/employee/${empId}/sheet/supervisor?${cParam}`
@@ -208,7 +207,7 @@ function syncCycleBadges() {
 
 async function refreshCurrentScreenForCycle(cycle) {
   if (screens.home && !screens.home.classList.contains('hidden')) {
-    if (currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole)) {
+    if (currentExactRole === 'Employee' || currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole)) {
       await renderEmployeeScorecard(cycle);
     } else if (currentExactRole === 'Team Leader (TL)') {
       await renderTLView(cycle);
@@ -250,6 +249,7 @@ const screens = {
   historical: document.getElementById('screen-historical'),
   lookup: document.getElementById('screen-lookup'),
   changepw: document.getElementById('screen-changepw'),
+  masterItems: document.getElementById('screen-master-items'),
   menu: document.getElementById('screen-menu'),
   form: document.getElementById('screen-form'),
 };
@@ -302,7 +302,7 @@ function setTopbarWho(role, id, name, unitName, exactRole) {
       currentUser = s.user;
       currentUnitName = s.unitName;
       currentEmpId = s.id;
-      viewingEmpId = (s.exactRole === 'Shop Floor Employee') ? s.id : null;
+      viewingEmpId = (s.exactRole === 'Employee' || s.exactRole === 'Shop Floor Employee') ? s.id : null;
       if (viewingEmpId) {
         await updateActiveEmployeeInfo(viewingEmpId, s.name, s.unitName);
       }
@@ -333,7 +333,7 @@ document.querySelectorAll('#roleToggle button').forEach(btn => {
       document.getElementById('loginPw').placeholder = 'Passcode';
       document.getElementById('loginNote').textContent = 'Super Admin, HR Head, Unit Admin, SGL, or Team Leader login.';
     } else {
-      document.getElementById('loginHeading').textContent = 'Shop Floor Sign In';
+      document.getElementById('loginHeading').textContent = 'Employee Sign In';
       document.getElementById('loginIdLabel').textContent = 'Employee ID';
       document.getElementById('loginId').placeholder = 'e.g. KA1042 or NTK1042';
       document.getElementById('loginPwLabel').textContent = 'Password';
@@ -362,7 +362,7 @@ async function doLogin() {
     currentUser = result.user;
     currentUnitName = result.unitName;
     currentEmpId = result.id;
-    viewingEmpId = (result.exactRole === 'Shop Floor Employee') ? result.id : null;
+    viewingEmpId = (result.exactRole === 'Employee' || result.exactRole === 'Shop Floor Employee') ? result.id : null;
     if (viewingEmpId) {
       await updateActiveEmployeeInfo(viewingEmpId, result.name, result.unitName);
     }
@@ -411,7 +411,7 @@ async function updateActiveEmployeeInfo(empId, optName, optUnit) {
       empCode: empId,
       name: name,
       unitName: u.unitName || optUnit || currentUnitName || 'Unit',
-      role: u.role || 'Shop Floor Employee',
+      role: (u.role === 'Shop Floor Employee' ? 'Employee' : u.role) || 'Employee',
       departmentName: u.departmentName || '',
     };
   } catch (e) {
@@ -419,7 +419,7 @@ async function updateActiveEmployeeInfo(empId, optName, optUnit) {
       empCode: empId,
       name: optName || empId,
       unitName: optUnit || currentUnitName || 'Unit',
-      role: 'Shop Floor Employee',
+      role: 'Employee',
     };
   }
 
@@ -452,7 +452,7 @@ async function selectEmployee(empId, optName, optUnit, targetSheet = null) {
 }
 
 function deselectEmployee() {
-  const isEmp = currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole);
+  const isEmp = currentExactRole === 'Employee' || currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole);
   viewingEmpId = isEmp ? currentEmpId : null;
   activeEmployeeInfo = null;
   renderSidebar();
@@ -489,7 +489,7 @@ function updateEmployeeNavBar() {
   // Status Badge
   const badge = document.getElementById('enbBadge');
   const a = activeEmployeeInfo?.assessment;
-  const isSup = currentRole === 'supervisor' || currentExactRole !== 'Shop Floor Employee';
+  const isSup = currentRole === 'supervisor' || (currentExactRole !== 'Employee' && currentExactRole !== 'Shop Floor Employee');
 
   if (badge) {
     const scoreVal = (a && a.tlScore !== null && a.tlScore !== undefined) ? a.tlScore : (a?.score);
@@ -566,7 +566,7 @@ function renderSidebar() {
   const sidebar = document.getElementById('sidebar');
   if (!sidebar) return;
 
-  const isEmp = currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole);
+  const isEmp = currentExactRole === 'Employee' || currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole);
   const isHomeActive = !screens.home.classList.contains('hidden');
   const isInboxActive = !screens.inbox.classList.contains('hidden');
   const isMenuActive = !screens.menu.classList.contains('hidden');
@@ -593,6 +593,7 @@ function renderSidebar() {
       html += `
         <button class="sb-link" data-action="add-user"><span class="sb-link-num">0${nextNum++}</span>Add User</button>
         <button class="sb-link" data-action="cycles"><span class="sb-link-num">0${nextNum++}</span>Assessment Cycles</button>
+        <button class="sb-link ${screens.masterItems && !screens.masterItems.classList.contains('hidden') ? 'active' : ''}" data-action="master-items"><span class="sb-link-num">0${nextNum++}</span>Training &amp; Activities</button>
         <button class="sb-link" data-action="export-csv"><span class="sb-link-num">0${nextNum++}</span>Export Report</button>`;
       if (currentExactRole === 'Super Admin') {
         html += `<button class="sb-link" data-action="manage-units"><span class="sb-link-num">0${nextNum++}</span>Plant / Unit Settings</button>`;
@@ -637,7 +638,7 @@ function renderSidebar() {
       `;
     }
   } else {
-    // Shop Floor Employee view
+    // Employee view
     html += `<div class="sb-section-label">My Growth Passport</div>
       <button class="sb-link ${isMenuActive ? 'active' : ''}" data-action="menu"><span class="sb-link-num">All</span>All 10 Sections</button>
       <div class="sb-components-list">
@@ -691,6 +692,11 @@ function renderSidebar() {
     openCycleMgmtModal();
   });
 
+  sidebar.querySelector('[data-action="master-items"]')?.addEventListener('click', async () => {
+    await renderMasterItemsPage();
+    showScreen('masterItems');
+  });
+
   sidebar.querySelector('[data-action="manage-units"]')?.addEventListener('click', () => {
     openUnitMgmtModal();
   });
@@ -735,7 +741,7 @@ function renderSidebar() {
     }
   });
 
-  // Employee sheet list links (for shop floor employee)
+  // Employee sheet list links (for employee)
   sidebar.querySelectorAll('[data-sheet]').forEach(btn => {
     btn.addEventListener('click', () => {
       viewingEmpId = currentEmpId;
@@ -787,6 +793,11 @@ function updateSidebarActive() {
   if (menuBtn) {
     menuBtn.classList.toggle('active', isMenuActive);
   }
+  const isMasterItemsActive = screens.masterItems && !screens.masterItems.classList.contains('hidden');
+  const masterItemsBtn = document.querySelector('.sb-link[data-action="master-items"]');
+  if (masterItemsBtn) {
+    masterItemsBtn.classList.toggle('active', isMasterItemsActive);
+  }
 
   const sbSelect = document.getElementById('sbSheetSelect');
   if (sbSelect && currentSheetId) {
@@ -800,7 +811,7 @@ function updateSidebarActive() {
 
 /* ============================= HOME (role-aware dashboards) ============================= */
 async function renderHome() {
-  const isEmp = currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole);
+  const isEmp = currentExactRole === 'Employee' || currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole);
 
   document.getElementById('homeEmployee')?.classList.toggle('hidden', !isEmp);
   document.getElementById('homeSupervisor')?.classList.toggle('hidden', isEmp);
@@ -822,7 +833,7 @@ async function renderHome() {
     const heroUnit = document.getElementById('empHeroUnit');
     if (heroUnit) heroUnit.textContent = `Plant: ${currentUnitName || 'Gurugram'}`;
     const heroRole = document.getElementById('empHeroRole');
-    if (heroRole) heroRole.textContent = currentExactRole || 'Shop Floor Employee';
+    if (heroRole) heroRole.textContent = (currentExactRole === 'Shop Floor Employee' ? 'Employee' : currentExactRole) || 'Employee';
     const heroDept = document.getElementById('empHeroDept');
     if (heroDept) heroDept.textContent = activeEmployeeInfo?.departmentName || 'Line Operations';
 
@@ -883,7 +894,7 @@ async function renderHome() {
     if (unitAdminView) unitAdminView.classList.remove('hidden');
     await renderUnitAdminView();
   } else if (currentExactRole === 'Team Leader (TL)') {
-    document.getElementById('homeLead').textContent = `Assigned unit: ${currentUnitName || 'Unit'}. Review and evaluate shop floor employees under your leadership (1 - 10 scale).`;
+    document.getElementById('homeLead').textContent = `Assigned unit: ${currentUnitName || 'Unit'}. Review and evaluate employees under your leadership (1 - 10 scale).`;
     if (tlView) tlView.classList.remove('hidden');
     await renderTLView();
   } else if (currentExactRole === 'Senior Group Leader (SGL)') {
@@ -1045,7 +1056,7 @@ async function renderEmployeeScorecard(month = getGlobalCycle()) {
             <div class="emp-step-num">1</div>
             <div>
               <div class="emp-step-title">Passport Sheets</div>
-              <div class="emp-step-desc">10 sections updated with monthly data</div>
+              <div class="emp-step-desc">Passport sections updated with monthly data</div>
             </div>
           </div>
           <div class="emp-step-item ${isSubmitted ? '' : 'active'}">
@@ -1478,97 +1489,167 @@ document.getElementById('tlHomeSearchInput')?.addEventListener('input', (e) => {
   applyTLDashboardView();
 });
 
+const EVAL_METRICS = [
+  { id: 'cJobPerf', key: 'Performance on the Job', label: 'Performance on the Job', max: 20, min60: 12, def: 17 },
+  { id: 'cAttendance', key: 'Attendance', label: 'Attendance', max: 10, min60: 6, def: 9 },
+  { id: 'cWorkPerf', key: 'Work Performance', label: 'Work Performance', max: 20, min60: 12, def: 17 },
+  { id: 'cLinePerf', key: 'Line Performance', label: 'Line Performance', max: 20, min60: 12, def: 17 },
+  { id: 'cRecognition', key: 'Recognition', label: 'Recognition', max: 10, min60: 6, def: 8 },
+  { id: 'cDocGrowth', key: 'Documentation (Growth File)', label: 'Documentation (Growth File)', max: 10, min60: 6, def: 8 },
+  { id: 'cLean', key: 'AHPS / LEAN Participation', label: 'AHPS / LEAN Participation', max: 10, min60: 6, def: 9 },
+];
+
 function openEvalModal(empCode, name, score, grade, comments, criteriaScores = null) {
   currentEvalEmpId = empCode;
   currentEvalEmpName = name;
   document.getElementById('evalModalTitle').textContent = `Evaluate Assessment: ${name} (${empCode})`;
   const subEl = document.getElementById('evalModalSub');
   if (subEl) subEl.textContent = `Plant: ${currentUnitName || 'Unit'} · Official Monthly Rating (Scale 1.0 - 10.0)`;
-  
-  const scoreInput = document.getElementById('evalOverallScore');
-  scoreInput.value = score ? Number(score).toFixed(1) : '8.5';
-  
+
   // Populate criteria breakdown
   const crit = (criteriaScores && typeof criteriaScores === 'object') ? criteriaScores : {};
-  const sSafety = document.getElementById('cSafety');
-  if (sSafety) sSafety.value = crit.safety !== undefined ? crit.safety : (score >= 8.5 ? 9.0 : 8.5);
-  const sQuality = document.getElementById('cQuality');
-  if (sQuality) sQuality.value = crit.quality !== undefined ? crit.quality : (score >= 8.5 ? 8.5 : 8.0);
-  const sProd = document.getElementById('cProd');
-  if (sProd) sProd.value = crit.productivity !== undefined ? crit.productivity : (score >= 8.5 ? 8.5 : 8.0);
-  const sAttend = document.getElementById('cAttend');
-  if (sAttend) sAttend.value = crit.attendance !== undefined ? crit.attendance : (score >= 8.5 ? 9.5 : 9.0);
-  const sKaizen = document.getElementById('cKaizen');
-  if (sKaizen) sKaizen.value = crit.kaizen !== undefined ? crit.kaizen : (score >= 8.5 ? 8.5 : 8.0);
+  EVAL_METRICS.forEach(m => {
+    const el = document.getElementById(m.id);
+    if (el) {
+      let val = crit[m.key] ?? crit[m.label] ?? crit[m.id];
+      if (val === undefined || val === null || val === '') {
+        val = m.def;
+      }
+      val = parseFloat(val);
+      if (isNaN(val) || val < m.min60) val = m.min60;
+      if (val > m.max) val = m.max;
+      el.value = val;
+    }
+  });
 
   document.getElementById('evalComments').value = comments || '';
-  updateEvalModalGrade();
+  recalculateEvalModal();
   document.getElementById('evalModal').classList.remove('hidden');
 }
 
-function updateEvalModalGrade() {
-  const score = parseFloat(document.getElementById('evalOverallScore').value) || 0;
-  const badge = document.getElementById('evalGradeBadge');
-  if (score >= 9.0) {
-    badge.textContent = 'Grade A+ (Distinction)';
-    badge.className = 'badge badge-evaluated';
-  } else if (score >= 8.0) {
-    badge.textContent = 'Grade A (Outstanding)';
-    badge.className = 'badge badge-evaluated';
-  } else if (score >= 7.0) {
-    badge.textContent = 'Grade B+ (Good)';
-    badge.className = 'badge badge-evaluated';
-  } else if (score >= 6.0) {
-    badge.textContent = 'Grade B (Satisfactory)';
-    badge.className = 'badge badge-pending';
-  } else {
-    badge.textContent = 'Grade C (Needs Improvement)';
-    badge.className = 'badge badge-pending';
+function recalculateEvalModal() {
+  let totalMarks = 0;
+  let hasValidationError = false;
+  let errorMessage = '';
+
+  const errBox = document.getElementById('evalModalError');
+  const submitBtn = document.getElementById('evalSubmitBtn');
+
+  EVAL_METRICS.forEach(m => {
+    const el = document.getElementById(m.id);
+    if (!el) return;
+    const raw = String(el.value).trim();
+    const val = parseFloat(raw);
+
+    if (raw === '' || isNaN(val)) {
+      hasValidationError = true;
+      el.style.borderColor = '#ef4444';
+      el.style.backgroundColor = '#fef2f2';
+      if (!errorMessage) errorMessage = `Please enter marks for "${m.label}".`;
+    } else if (val < m.min60) {
+      hasValidationError = true;
+      el.style.borderColor = '#ef4444';
+      el.style.backgroundColor = '#fef2f2';
+      if (!errorMessage) {
+        errorMessage = `Mandatory policy: Minimum 60% marks required. "${m.label}" cannot be less than ${m.min60} / ${m.max} marks.`;
+      }
+    } else if (val > m.max) {
+      hasValidationError = true;
+      el.style.borderColor = '#ef4444';
+      el.style.backgroundColor = '#fef2f2';
+      if (!errorMessage) {
+        errorMessage = `"${m.label}" cannot exceed maximum ${m.max} marks.`;
+      }
+    } else {
+      el.style.borderColor = 'var(--panel-line)';
+      el.style.backgroundColor = '#fff';
+      totalMarks += val;
+    }
+  });
+
+  const overallScore = totalMarks > 0 ? Number((totalMarks / 10).toFixed(1)) : 0;
+  const scoreInp = document.getElementById('evalOverallScore');
+  if (scoreInp) scoreInp.value = overallScore.toFixed(1);
+
+  const totalBadge = document.getElementById('evalTotalMarksBadge');
+  if (totalBadge) totalBadge.textContent = `${totalMarks} / 100`;
+
+  const gradeBadge = document.getElementById('evalGradeBadge');
+  if (gradeBadge) {
+    if (overallScore >= 9.0) {
+      gradeBadge.textContent = 'Grade A+ (Distinction)';
+      gradeBadge.className = 'badge badge-evaluated';
+    } else if (overallScore >= 8.0) {
+      gradeBadge.textContent = 'Grade A (Outstanding)';
+      gradeBadge.className = 'badge badge-evaluated';
+    } else if (overallScore >= 7.0) {
+      gradeBadge.textContent = 'Grade B+ (Good)';
+      gradeBadge.className = 'badge badge-evaluated';
+    } else if (overallScore >= 6.0) {
+      gradeBadge.textContent = 'Grade B (Satisfactory)';
+      gradeBadge.className = 'badge badge-pending';
+    } else {
+      gradeBadge.textContent = 'Grade C (Under 60% - Not Allowed)';
+      gradeBadge.className = 'badge badge-pending';
+    }
   }
+
+  if (totalMarks < 60 && !hasValidationError) {
+    hasValidationError = true;
+    errorMessage = 'Policy violation: Total marks must be at least 60 / 100 (minimum 6.0 / 10.0 scale).';
+  }
+
+  if (errBox) {
+    if (hasValidationError) {
+      errBox.textContent = errorMessage;
+      errBox.classList.remove('hidden');
+    } else {
+      errBox.textContent = '';
+      errBox.classList.add('hidden');
+    }
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = hasValidationError;
+    submitBtn.style.opacity = hasValidationError ? '0.5' : '1';
+    submitBtn.style.cursor = hasValidationError ? 'not-allowed' : 'pointer';
+  }
+
+  return !hasValidationError;
 }
 
-['cSafety','cQuality','cProd','cAttend','cKaizen'].forEach(id => {
-  const el = document.getElementById(id);
+EVAL_METRICS.forEach(m => {
+  const el = document.getElementById(m.id);
   if (el) {
-    el.addEventListener('input', () => {
-      const s = (
-        parseFloat(document.getElementById('cSafety').value || 0) +
-        parseFloat(document.getElementById('cQuality').value || 0) +
-        parseFloat(document.getElementById('cProd').value || 0) +
-        parseFloat(document.getElementById('cAttend').value || 0) +
-        parseFloat(document.getElementById('cKaizen').value || 0)
-      ) / 5;
-      document.getElementById('evalOverallScore').value = s.toFixed(1);
-      updateEvalModalGrade();
-    });
+    el.addEventListener('input', recalculateEvalModal);
   }
 });
-document.getElementById('evalOverallScore').addEventListener('input', updateEvalModalGrade);
-document.getElementById('evalCancelBtn').addEventListener('click', () => {
-  document.getElementById('evalModal').classList.add('hidden');
+
+document.getElementById('evalCancelBtn')?.addEventListener('click', () => {
+  document.getElementById('evalModal')?.classList.add('hidden');
 });
-document.getElementById('evalSubmitBtn').addEventListener('click', async () => {
+
+document.getElementById('evalSubmitBtn')?.addEventListener('click', async () => {
   if (!currentEvalEmpId) return;
-  const scoreVal = parseFloat(document.getElementById('evalOverallScore').value);
-  if (isNaN(scoreVal) || scoreVal < 1.0 || scoreVal > 10.0) {
-    alert('Please enter a valid evaluation score between 1.0 and 10.0');
+  if (!recalculateEvalModal()) {
     return;
   }
+
+  const criteriaScores = {};
+  EVAL_METRICS.forEach(m => {
+    criteriaScores[m.key] = parseFloat(document.getElementById(m.id).value);
+  });
+
   const payload = {
     employeeId: currentEvalEmpId,
     month: getGlobalCycle(),
-    score: scoreVal,
+    score: parseFloat(document.getElementById('evalOverallScore').value),
     ratingGrade: document.getElementById('evalGradeBadge').textContent,
-    criteriaScores: {
-      safety: parseFloat(document.getElementById('cSafety').value) || 8.5,
-      quality: parseFloat(document.getElementById('cQuality').value) || 8.5,
-      productivity: parseFloat(document.getElementById('cProd').value) || 8.5,
-      attendance: parseFloat(document.getElementById('cAttend').value) || 9.0,
-      kaizen: parseFloat(document.getElementById('cKaizen').value) || 8.0,
-    },
+    criteriaScores,
     tlComments: document.getElementById('evalComments').value.trim(),
     comments: document.getElementById('evalComments').value.trim(),
   };
+
   try {
     const res = await api('/api/tl/evaluate', { method: 'POST', body: payload });
     showToast(`Assessment submitted: ${res.score}/10 (${res.ratingGrade})`);
@@ -1576,10 +1657,19 @@ document.getElementById('evalSubmitBtn').addEventListener('click', async () => {
     if (viewingEmpId === currentEvalEmpId) {
       await updateActiveEmployeeInfo(viewingEmpId);
       updateEmployeeNavBar();
+      if (currentSheetId === 'supervisor') {
+        await openSheet('supervisor');
+      }
     }
     await renderTLView(getGlobalCycle());
   } catch (err) {
-    alert(err.message || 'Failed to submit evaluation.');
+    const errBox = document.getElementById('evalModalError');
+    if (errBox) {
+      errBox.textContent = err.message || 'Failed to submit evaluation.';
+      errBox.classList.remove('hidden');
+    } else {
+      showToast(err.message || 'Failed to submit evaluation.');
+    }
   }
 });
 
@@ -1856,16 +1946,19 @@ function openSglAuditModal(emp) {
     evalMeta.textContent = `Evaluated by ${emp.evaluatorName || emp.tlName || 'Team Leader'} on ${revDate}`;
   }
 
-  // Criteria Scores (Read-Only)
-  const setCrit = (id, val, fallback) => {
+  // Criteria Scores (Read-Only 7 Metrics)
+  const setCrit = (id, val, max, fallback) => {
     const el = document.getElementById(id);
-    if (el) el.textContent = `${parseFloat(val !== undefined && val !== null ? val : fallback).toFixed(1)} / 10`;
+    const scoreVal = (val !== undefined && val !== null && val !== '') ? parseFloat(val) : fallback;
+    if (el) el.textContent = `${scoreVal} / ${max}`;
   };
-  setCrit('sglCritSafety', crit.safety || crit['5s'], numScore >= 8 ? 9.0 : 7.5);
-  setCrit('sglCritQuality', crit.quality, numScore >= 8 ? 8.5 : 7.0);
-  setCrit('sglCritProd', crit.productivity, numScore >= 8 ? 8.5 : 7.5);
-  setCrit('sglCritAttend', crit.attendance, numScore >= 8 ? 9.5 : 8.0);
-  setCrit('sglCritKaizen', crit.kaizen, numScore >= 8 ? 8.0 : 7.0);
+  setCrit('sglCritJobPerf', crit['Performance on the Job'] ?? crit.jobPerf, 20, 17);
+  setCrit('sglCritAttendance', crit['Attendance'] ?? crit.attendance, 10, 9);
+  setCrit('sglCritWorkPerf', crit['Work Performance'] ?? crit.workPerf, 20, 17);
+  setCrit('sglCritLinePerf', crit['Line Performance'] ?? crit.linePerf, 20, 17);
+  setCrit('sglCritRecognition', crit['Recognition'] ?? crit.recognition, 10, 8);
+  setCrit('sglCritDocGrowth', crit['Documentation (Growth File)'] ?? crit.docGrowth, 10, 8);
+  setCrit('sglCritLean', crit['AHPS / LEAN Participation'] ?? crit.lean, 10, 9);
 
   // TL Comments
   const commentsEl = document.getElementById('sglAuditTLCommentsText');
@@ -2623,6 +2716,15 @@ async function openUserMgmtModal(userToEdit = null) {
   const activeCheckbox = document.getElementById('userMgmtIsActive');
   const activeLabel = document.getElementById('userMgmtActiveLabel');
 
+  const joiningDateInput = document.getElementById('userMgmtJoiningDate');
+  const dobInput = document.getElementById('userMgmtDob');
+  const fatherNameInput = document.getElementById('userMgmtFatherName');
+  const mobileInput = document.getElementById('userMgmtMobile');
+  const emailInput = document.getElementById('userMgmtEmail');
+  const designationInput = document.getElementById('userMgmtDesignation');
+  const gradeCodeInput = document.getElementById('userMgmtGradeCode');
+  const groupJoiningDateInput = document.getElementById('userMgmtGroupJoiningDate');
+
   if (errEl) {
     errEl.textContent = '';
     errEl.classList.add('hidden');
@@ -2634,7 +2736,7 @@ async function openUserMgmtModal(userToEdit = null) {
     empCodeInput.value = userToEdit.empCode;
     empCodeInput.disabled = true;
     nameInput.value = userToEdit.name || '';
-    roleSelect.value = userToEdit.exactRole || userToEdit.roleName || userToEdit.role || 'Shop Floor Employee';
+    roleSelect.value = userToEdit.exactRole === 'Shop Floor Employee' ? 'Employee' : (userToEdit.exactRole || userToEdit.roleName || userToEdit.role || 'Employee');
     unitSelect.value = userToEdit.unitId || '';
     deptInput.value = userToEdit.department || userToEdit.departmentName || 'Operations';
     tlSelect.value = userToEdit.tlId || userToEdit.teamLeaderId || '';
@@ -2643,13 +2745,22 @@ async function openUserMgmtModal(userToEdit = null) {
     pwNote.textContent = 'Leave blank to preserve existing password.';
     activeCheckbox.checked = userToEdit.isActive !== false && userToEdit.isActive !== 0;
     activeLabel.textContent = activeCheckbox.checked ? 'Active & Permitted' : 'Deactivated / Login Blocked';
+
+    if (joiningDateInput) joiningDateInput.value = userToEdit.joiningDate || '';
+    if (dobInput) dobInput.value = userToEdit.dob || '';
+    if (fatherNameInput) fatherNameInput.value = userToEdit.fatherName || '';
+    if (mobileInput) mobileInput.value = userToEdit.mobile || '';
+    if (emailInput) emailInput.value = userToEdit.email || '';
+    if (designationInput) designationInput.value = userToEdit.designation || '';
+    if (gradeCodeInput) gradeCodeInput.value = userToEdit.gradeCode || '';
+    if (groupJoiningDateInput) groupJoiningDateInput.value = userToEdit.groupJoiningDate || '';
   } else {
     title.textContent = 'Create New User Account';
     sub.textContent = 'Add employee, supervisor, or administrator credentials and unit assignment.';
     empCodeInput.value = '';
     empCodeInput.disabled = false;
     nameInput.value = '';
-    roleSelect.value = 'Shop Floor Employee';
+    roleSelect.value = 'Employee';
     if (currentExactRole === 'Unit Admin' && (currentUser?.unitId || currentUser?.unitName)) {
       if (currentUser?.unitId) unitSelect.value = currentUser.unitId;
       unitSelect.disabled = true;
@@ -2664,6 +2775,15 @@ async function openUserMgmtModal(userToEdit = null) {
     pwNote.textContent = 'Default passcode if left blank: Mahle@123';
     activeCheckbox.checked = true;
     activeLabel.textContent = 'Active & Permitted';
+
+    if (joiningDateInput) joiningDateInput.value = '';
+    if (dobInput) dobInput.value = '';
+    if (fatherNameInput) fatherNameInput.value = '';
+    if (mobileInput) mobileInput.value = '';
+    if (emailInput) emailInput.value = '';
+    if (designationInput) designationInput.value = '';
+    if (gradeCodeInput) gradeCodeInput.value = '';
+    if (groupJoiningDateInput) groupJoiningDateInput.value = '';
   }
 
   // Toggle supervisor selection for executive roles
@@ -2678,13 +2798,22 @@ async function saveUserAccount() {
   const errEl = document.getElementById('userMgmtError');
   const empCode = (document.getElementById('userMgmtEmpCode')?.value || '').trim().toUpperCase();
   const name = (document.getElementById('userMgmtName')?.value || '').trim();
-  const role = document.getElementById('userMgmtRole')?.value || 'Shop Floor Employee';
+  const role = document.getElementById('userMgmtRole')?.value || 'Employee';
   const unitId = (document.getElementById('userMgmtUnit')?.value || '').trim();
   const department = (document.getElementById('userMgmtDept')?.value || '').trim() || 'Operations';
   const teamLeaderId = (document.getElementById('userMgmtTL')?.value || '').trim() || null;
   const seniorGroupLeaderId = (document.getElementById('userMgmtSGL')?.value || '').trim() || null;
   const password = (document.getElementById('userMgmtPassword')?.value || '').trim();
   const isActive = document.getElementById('userMgmtIsActive')?.checked ?? true;
+
+  const joiningDate = (document.getElementById('userMgmtJoiningDate')?.value || '').trim();
+  const dob = (document.getElementById('userMgmtDob')?.value || '').trim();
+  const fatherName = (document.getElementById('userMgmtFatherName')?.value || '').trim();
+  const mobile = (document.getElementById('userMgmtMobile')?.value || '').trim();
+  const email = (document.getElementById('userMgmtEmail')?.value || '').trim();
+  const designation = (document.getElementById('userMgmtDesignation')?.value || '').trim();
+  const gradeCode = (document.getElementById('userMgmtGradeCode')?.value || '').trim();
+  const groupJoiningDate = (document.getElementById('userMgmtGroupJoiningDate')?.value || '').trim();
 
   if (errEl) {
     errEl.textContent = '';
@@ -2707,6 +2836,11 @@ async function saveUserAccount() {
     errEl.classList.remove('hidden');
     return;
   }
+  if (!joiningDate) {
+    errEl.textContent = 'Please provide Date of Joining (Joined On) — it is required.';
+    errEl.classList.remove('hidden');
+    return;
+  }
 
   const payload = {
     empCode,
@@ -2717,6 +2851,14 @@ async function saveUserAccount() {
     teamLeaderId,
     seniorGroupLeaderId,
     isActive,
+    joiningDate,
+    dob: dob || null,
+    fatherName: fatherName || null,
+    mobile: mobile || null,
+    email: email || null,
+    designation: designation || null,
+    gradeCode: gradeCode || null,
+    groupJoiningDate: groupJoiningDate || null,
   };
   if (password) payload.password = password;
 
@@ -3124,6 +3266,238 @@ document.getElementById('unitMgmtCloseX')?.addEventListener('click', () => docum
 document.getElementById('unitEditCancelBtn')?.addEventListener('click', () => document.getElementById('unitMgmtModal')?.classList.add('hidden'));
 document.getElementById('unitEditSaveBtn')?.addEventListener('click', saveUnitEdit);
 
+/* ============================= MASTER CATALOG (TRAINING & ACTIVITIES) ============================= */
+let masterTrainingsCache = null;
+let masterActivitiesCache = null;
+let masterItemsLoaded = false;
+let masterTrainingSearchQuery = '';
+let masterActivitySearchQuery = '';
+
+const DEFAULT_TRAINING_NAMES = ['APS -4 Day', 'APS Refresher', 'TPM', 'SPC', 'PFEMA', 'EMS', 'Product Process Knowledge', 'Sales', 'Others'];
+const DEFAULT_ACTIVITY_NAMES = ['Participation in Committees', 'Sports', 'First Aid', 'Safety Committee', 'Canteen Committee', 'Cultural Activities', 'Participation in CI-meet'];
+
+async function loadMasterItems(forceRefresh = false) {
+  if (masterItemsLoaded && !forceRefresh) return;
+  try {
+    const res = await api('/api/master-items');
+    if (res && (res.ok || res.success)) {
+      masterTrainingsCache = (Array.isArray(res.trainings) ? res.trainings : []).map(t => ({
+        id: t.id,
+        name: t.title || t.name,
+        type: 'training',
+        sortOrder: t.sortOrder
+      }));
+      masterActivitiesCache = (Array.isArray(res.activities) ? res.activities : []).map(a => ({
+        id: a.id,
+        name: a.title || a.name,
+        type: 'activity',
+        sortOrder: a.sortOrder
+      }));
+      masterItemsLoaded = true;
+    }
+  } catch (err) {
+    console.warn('Failed to load master items, using fallbacks:', err);
+    if (!masterTrainingsCache) masterTrainingsCache = DEFAULT_TRAINING_NAMES.map((name, i) => ({ id: `tr_${i}`, type: 'training', name, sortOrder: i }));
+    if (!masterActivitiesCache) masterActivitiesCache = DEFAULT_ACTIVITY_NAMES.map((name, i) => ({ id: `ac_${i}`, type: 'activity', name, sortOrder: i }));
+  }
+}
+
+function getMasterTrainingsList() {
+  if (masterTrainingsCache && masterTrainingsCache.length) {
+    return masterTrainingsCache.map(t => t.name);
+  }
+  return DEFAULT_TRAINING_NAMES;
+}
+
+function getMasterActivitiesList() {
+  if (masterActivitiesCache && masterActivitiesCache.length) {
+    return masterActivitiesCache.map(a => a.name);
+  }
+  return DEFAULT_ACTIVITY_NAMES;
+}
+
+async function renderMasterItemsPage() {
+  await loadMasterItems(true);
+  renderMasterItemsTables();
+}
+
+function renderMasterItemsTables() {
+  const trTbody = document.getElementById('masterTrainingTableBody');
+  const acTbody = document.getElementById('masterActivityTableBody');
+  const trCountEl = document.getElementById('masterTrCount');
+  const acCountEl = document.getElementById('masterAcCount');
+  const trBadge = document.getElementById('trBadgeCount');
+  const acBadge = document.getElementById('acBadgeCount');
+
+  const trainings = masterTrainingsCache || [];
+  const activities = masterActivitiesCache || [];
+
+  if (trCountEl) trCountEl.textContent = trainings.length;
+  if (acCountEl) acCountEl.textContent = activities.length;
+  if (trBadge) trBadge.textContent = `${trainings.length} Topics`;
+  if (acBadge) acBadge.textContent = `${activities.length} Activities`;
+
+  // Filter trainings
+  const qTr = (masterTrainingSearchQuery || '').toLowerCase().trim();
+  const filteredTrainings = qTr ? trainings.filter(t => t.name.toLowerCase().includes(qTr)) : trainings;
+
+  if (trTbody) {
+    if (!filteredTrainings.length) {
+      trTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:18px;color:var(--ink-dim);">${trainings.length === 0 ? 'No training courses configured yet. Add one above!' : 'No matching courses found.'}</td></tr>`;
+    } else {
+      trTbody.innerHTML = filteredTrainings.map((t, idx) => `
+        <tr data-id="${esc(t.id)}">
+          <td style="text-align:center;color:var(--ink-dim);font-weight:600;font-size:12px;">${idx + 1}</td>
+          <td style="font-weight:600;color:var(--ink);font-size:13px;">${esc(t.name)}</td>
+          <td style="text-align:center;">
+            <button type="button" class="btn btn-sm btn-ghost del-master-item-btn" data-type="training" data-id="${esc(t.id)}" data-name="${esc(t.name)}" title="Delete Course" style="color:#dc2626;padding:3px 8px;font-size:12px;">
+              Delete
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  // Filter activities
+  const qAc = (masterActivitySearchQuery || '').toLowerCase().trim();
+  const filteredActivities = qAc ? activities.filter(a => a.name.toLowerCase().includes(qAc)) : activities;
+
+  if (acTbody) {
+    if (!filteredActivities.length) {
+      acTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:18px;color:var(--ink-dim);">${activities.length === 0 ? 'No activities configured yet. Add one above!' : 'No matching activities found.'}</td></tr>`;
+    } else {
+      acTbody.innerHTML = filteredActivities.map((a, idx) => `
+        <tr data-id="${esc(a.id)}">
+          <td style="text-align:center;color:var(--ink-dim);font-weight:600;font-size:12px;">${idx + 1}</td>
+          <td style="font-weight:600;color:var(--ink);font-size:13px;">${esc(a.name)}</td>
+          <td style="text-align:center;">
+            <button type="button" class="btn btn-sm btn-ghost del-master-item-btn" data-type="activity" data-id="${esc(a.id)}" data-name="${esc(a.name)}" title="Delete Activity" style="color:#dc2626;padding:3px 8px;font-size:12px;">
+              Delete
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+  }
+}
+
+async function handleAddMasterItem(type, nameInputId, errorElId) {
+  const input = document.getElementById(nameInputId);
+  const errorEl = document.getElementById(errorElId);
+  if (!input) return;
+  const name = input.value.trim();
+  if (errorEl) { errorEl.textContent = ''; errorEl.classList.add('hidden'); }
+  if (!name) {
+    if (errorEl) { errorEl.textContent = 'Please enter a name.'; errorEl.classList.remove('hidden'); }
+    return;
+  }
+  try {
+    const res = await api('/api/admin/master-items', {
+      method: 'POST',
+      body: { action: 'add', type, name, title: name }
+    });
+    if (res && (res.success || res.ok)) {
+      input.value = '';
+      showToast(`${type === 'training' ? 'Training course' : 'Plant activity'} added successfully.`);
+      await renderMasterItemsPage();
+    } else {
+      throw new Error(res?.error || 'Failed to add item.');
+    }
+  } catch (err) {
+    if (errorEl) {
+      errorEl.textContent = err.message || 'Error adding item.';
+      errorEl.classList.remove('hidden');
+    } else {
+      showToast(err.message);
+    }
+  }
+}
+
+async function handleDeleteMasterItem(type, id, name) {
+  try {
+    // 1. Optimistically remove from client cache for immediate 0ms UI feedback
+    if (type === 'training' && masterTrainingsCache) {
+      masterTrainingsCache = masterTrainingsCache.filter(item => item.id !== id && item.name !== name);
+    } else if (type === 'activity' && masterActivitiesCache) {
+      masterActivitiesCache = masterActivitiesCache.filter(item => item.id !== id && item.name !== name);
+    }
+    renderMasterItemsTables();
+
+    // 2. Call admin delete API
+    const res = await api('/api/admin/master-items', {
+      method: 'POST',
+      body: { action: 'delete', type, id, name, title: name }
+    });
+
+    // 3. Verify success (both res.ok and res.success supported)
+    if (res && (res.ok || res.success)) {
+      showToast(`Deleted "${name}".`);
+      await renderMasterItemsPage();
+    } else {
+      throw new Error(res?.error || 'Failed to delete item.');
+    }
+  } catch (err) {
+    showToast(err.message || 'Error deleting item.');
+    await renderMasterItemsPage();
+  }
+}
+
+// Master Items event listeners
+document.getElementById('masterItemsRefreshBtn')?.addEventListener('click', () => {
+  renderMasterItemsPage();
+});
+document.getElementById('masterItemsBackBtn')?.addEventListener('click', () => {
+  renderHome();
+  showScreen('home');
+});
+document.getElementById('adminMasterCatalogBtn')?.addEventListener('click', async () => {
+  await renderMasterItemsPage();
+  showScreen('masterItems');
+});
+
+document.getElementById('addTrainingBtn')?.addEventListener('click', () => {
+  handleAddMasterItem('training', 'newTrainingInput', 'addTrainingError');
+});
+document.getElementById('newTrainingInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleAddMasterItem('training', 'newTrainingInput', 'addTrainingError');
+  }
+});
+
+document.getElementById('addActivityBtn')?.addEventListener('click', () => {
+  handleAddMasterItem('activity', 'newActivityInput', 'addActivityError');
+});
+document.getElementById('newActivityInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleAddMasterItem('activity', 'newActivityInput', 'addActivityError');
+  }
+});
+
+document.getElementById('searchTrainingInput')?.addEventListener('input', (e) => {
+  masterTrainingSearchQuery = e.target.value;
+  renderMasterItemsTables();
+});
+document.getElementById('searchActivityInput')?.addEventListener('input', (e) => {
+  masterActivitySearchQuery = e.target.value;
+  renderMasterItemsTables();
+});
+
+document.getElementById('masterTrainingTableBody')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.del-master-item-btn');
+  if (btn) {
+    handleDeleteMasterItem(btn.dataset.type, btn.dataset.id, btn.dataset.name);
+  }
+});
+document.getElementById('masterActivityTableBody')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.del-master-item-btn');
+  if (btn) {
+    handleDeleteMasterItem(btn.dataset.type, btn.dataset.id, btn.dataset.name);
+  }
+});
+
 // Global delegated click listener for unit filter pills and edit unit button
 document.addEventListener('click', async (e) => {
   const editBtn = e.target.closest('#unitBarEditBtn, #topbarManageUnitsBtn');
@@ -3180,7 +3554,7 @@ async function doLookupSearch(empCode) {
     const name = res.name || code;
     const u = res.user || {};
     const unit = u.unitName || currentUnitName || 'Unit';
-    const role = u.role || 'Shop Floor Employee';
+    const role = (u.role === 'Shop Floor Employee' ? 'Employee' : u.role) || 'Employee';
     const dept = u.departmentName || 'Operations';
 
     // Fetch assessment info
@@ -3273,7 +3647,7 @@ function renderChangePwPage() {
   const whoUnit = document.getElementById('secWhoUnit');
 
   if (whoName) whoName.textContent = currentUser?.name || currentEmpId || '—';
-  if (whoRole) whoRole.textContent = currentExactRole || (currentRole === 'supervisor' ? 'Manager / Admin' : 'Shop Floor Employee');
+  if (whoRole) whoRole.textContent = (currentExactRole === 'Shop Floor Employee' ? 'Employee' : currentExactRole) || (currentRole === 'supervisor' ? 'Manager / Admin' : 'Employee');
   if (whoId) whoId.textContent = currentEmpId || '—';
   if (whoUnit) whoUnit.textContent = currentUnitName || (currentExactRole === 'Super Admin' ? 'All Units (Global)' : 'State Unit');
 
@@ -3359,7 +3733,7 @@ async function renderMenu(month = getGlobalCycle()) {
   }
   updateEmployeeNavBar();
   rebuildDropdown();
-  const isSup = currentRole === 'supervisor' || currentExactRole !== 'Shop Floor Employee';
+  const isSup = currentRole === 'supervisor' || (currentExactRole !== 'Employee' && currentExactRole !== 'Shop Floor Employee');
   const recordHeader = document.getElementById('recordHeader');
   const submitBox = document.getElementById('submitBox');
 
@@ -3445,7 +3819,7 @@ async function openSheet(sheetId) {
   const meta = SHEETS.find(s => s.id === sheetId);
   if (!meta) return;
 
-  const isEmp = currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole);
+  const isEmp = currentExactRole === 'Employee' || currentExactRole === 'Shop Floor Employee' || (currentRole === 'employee' && !currentExactRole);
 
   if (!viewingEmpId) {
     viewingEmpId = currentEmpId;
@@ -3484,6 +3858,9 @@ async function openSheet(sheetId) {
   showScreen('form');
   updateEmployeeNavBar();
   updateSidebarActive();
+  if (sheetId === 'training' || sheetId === 'activities') {
+    await loadMasterItems();
+  }
   const saved = await loadSheetData(viewingEmpId, sheetId, getGlobalCycle());
   container.classList.toggle('readonly', isReadOnly);
   RENDERERS[sheetId](container, saved || {});
@@ -3516,30 +3893,130 @@ function monthHeaderRow(extraLeadCols){
   return `<tr><th>${extraLeadCols}</th>${MONTHS.map(m=>`<th>${m}</th>`).join('')}</tr>`;
 }
 
+function toDateInputVal(val) {
+  if (!val) return '';
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  return s;
+}
+
 /* ---------- 1. FRONT PAGE ---------- */
 RENDERERS.frontpage = (el, d) => {
+  d = Object.assign({
+    empCode: viewingEmpId || '',
+    name: '',
+    father: '',
+    dob: '',
+    doj: '',
+    designation: '',
+    gradeCode: '',
+    groupDoj: '',
+    mobile: '',
+    email: '',
+    permAddr: '',
+    phone1: '',
+    corrAddr: '',
+    phone2: '',
+  }, d);
+
   el.innerHTML = `
     <h2 class="section-title">About Myself</h2>
-    <p class="small-note" style="margin-bottom:12px;color:var(--mahle-blue);font-weight:600;">Permanent Employee Profile &amp; Growth Passport Master Record. Saved permanently across all years and months.</p>
-    <div class="grid-2">
-      <div class="field-block"><label class="f">Name</label><input type="text" id="f_name" value="${esc(d.name)}"></div>
-      <div class="field-block"><label class="f">Father's Name</label><input type="text" id="f_father" value="${esc(d.father)}"></div>
-      <div class="field-block"><label class="f">Date of Birth</label><input type="date" id="f_dob" value="${esc(d.dob)}"></div>
-      <div class="field-block"><label class="f">Date of Joining</label><input type="date" id="f_doj" value="${esc(d.doj)}"></div>
+    <p class="small-note" style="margin-bottom:14px;color:var(--mahle-blue);font-weight:600;">
+      Permanent Employee Profile &amp; Growth Passport Master Record. Synchronized automatically from your personnel profile.
+    </p>
+
+    <!-- Professional & Employment Details -->
+    <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:8px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:12px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);text-transform:uppercase;margin-bottom:12px;letter-spacing:0.04em;">
+        Official Employment Record
+      </div>
+      <div class="grid-2">
+        <div class="field-block">
+          <label class="f">Employee No. (Emp Code)</label>
+          <input type="text" id="f_empCode" value="${esc(d.empCode || viewingEmpId || '')}" readonly style="background:#f1f3f9;font-weight:700;font-family:var(--font-mono);">
+        </div>
+        <div class="field-block">
+          <label class="f">Full Name / Display Name</label>
+          <input type="text" id="f_name" value="${esc(d.name)}">
+        </div>
+        <div class="field-block">
+          <label class="f">Designation</label>
+          <input type="text" id="f_designation" value="${esc(d.designation)}">
+        </div>
+        <div class="field-block">
+          <label class="f">Grade Code</label>
+          <input type="text" id="f_gradeCode" value="${esc(d.gradeCode)}">
+        </div>
+        <div class="field-block">
+          <label class="f">Date of Joining (Joined On)</label>
+          <input type="date" id="f_doj" value="${esc(toDateInputVal(d.doj))}">
+        </div>
+        <div class="field-block">
+          <label class="f">Group Joining Date</label>
+          <input type="date" id="f_groupDoj" value="${esc(toDateInputVal(d.groupDoj))}">
+        </div>
+      </div>
     </div>
-    <div class="field-block"><label class="f">Permanent Address</label><textarea id="f_permaddr">${esc(d.permAddr)}</textarea></div>
-    <div class="grid-2">
-      <div class="field-block"><label class="f">Phone</label><input type="text" id="f_phone1" value="${esc(d.phone1)}"></div>
-      <div class="field-block"><label class="f">Mobile No.</label><input type="text" id="f_mobile" value="${esc(d.mobile)}"></div>
+
+    <!-- Personal & Contact Details -->
+    <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:12px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);text-transform:uppercase;margin-bottom:12px;letter-spacing:0.04em;">
+        Personal Details &amp; Contacts
+      </div>
+      <div class="grid-2">
+        <div class="field-block">
+          <label class="f">Father's Name</label>
+          <input type="text" id="f_father" value="${esc(d.father)}">
+          <div class="small-note">Can be edited or updated anytime.</div>
+        </div>
+        <div class="field-block">
+          <label class="f">Date of Birth (Birth Date)</label>
+          <input type="date" id="f_dob" value="${esc(toDateInputVal(d.dob))}">
+        </div>
+        <div class="field-block">
+          <label class="f">Mobile Number</label>
+          <input type="text" id="f_mobile" value="${esc(d.mobile)}" placeholder="e.g. 9876543210" style="width:100%;box-sizing:border-box;">
+        </div>
+        <div class="field-block">
+          <label class="f">Email ID</label>
+          <input type="email" id="f_email" value="${esc(d.email)}" placeholder="e.g. employee@mahle.com" style="width:100%;box-sizing:border-box;">
+        </div>
+      </div>
     </div>
-    <div class="field-block"><label class="f">Correspondence Address</label><textarea id="f_corraddr">${esc(d.corrAddr)}</textarea></div>
-    <div class="field-block"><label class="f">Phone</label><input type="text" id="f_phone2" value="${esc(d.phone2)}"></div>
+
+    <!-- Address Information -->
+    <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:12px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);text-transform:uppercase;margin-bottom:12px;letter-spacing:0.04em;">
+        Address Information
+      </div>
+      <div class="field-block">
+        <label class="f">Permanent Address</label>
+        <textarea id="f_permaddr" placeholder="Enter permanent residential address...">${esc(d.permAddr)}</textarea>
+      </div>
+      <div class="field-block" style="margin-top:12px;">
+        <label class="f">Correspondence Address</label>
+        <textarea id="f_corraddr" placeholder="Enter correspondence / current communication address...">${esc(d.corrAddr)}</textarea>
+      </div>
+    </div>
   `;
 };
 COLLECTORS.frontpage = () => ({
-  name: val('f_name'), father: val('f_father'), dob: val('f_dob'), doj: val('f_doj'),
-  permAddr: val('f_permaddr'), phone1: val('f_phone1'), mobile: val('f_mobile'),
-  corrAddr: val('f_corraddr'), phone2: val('f_phone2'),
+  empCode: val('f_empCode') || viewingEmpId,
+  name: val('f_name'),
+  father: val('f_father'),
+  dob: val('f_dob'),
+  doj: val('f_doj'),
+  designation: val('f_designation'),
+  gradeCode: val('f_gradeCode'),
+  groupDoj: val('f_groupDoj'),
+  mobile: val('f_mobile'),
+  email: val('f_email'),
+  permAddr: val('f_permaddr'),
+  corrAddr: val('f_corraddr'),
+  phone1: val('f_mobile'),
+  phone2: '',
 });
 
 /* ---------- 2. LINE PERFORMANCE ---------- */
@@ -3653,7 +4130,8 @@ const TRAINING_FIXED = ['APS -4 Day','APS Refresher','TPM','SPC','PFEMA','EMS','
 RENDERERS.training = (el, d) => {
   d = Object.assign({name:'',area:'', ojt:[], fixed:{}}, d);
   if(!d.ojt.length) d.ojt = [{title:'',months:Array(12).fill(false)}];
-  TRAINING_FIXED.forEach(k=>{ if(!d.fixed[k]) d.fixed[k] = Array(12).fill(false); });
+  const trainingList = getMasterTrainingsList();
+  trainingList.forEach(k=>{ if(!d.fixed[k]) d.fixed[k] = Array(12).fill(false); });
   el.innerHTML = `
     <h2 class="section-title">Training Matrix</h2>
     <div class="grid-2">
@@ -3667,37 +4145,56 @@ RENDERERS.training = (el, d) => {
       ${monthHeaderRow('Training')}
       ${d.ojt.map((r,ri)=>ojtRow(r,ri)).join('')}
     </table></div>
-    <button class="addrow-btn" id="ojtAddBtn">+ Add training</button>
+    <button type="button" class="addrow-btn" id="ojtAddBtn">+ Add training</button>
 
     <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6b6455;margin:20px 0 8px;">Program Training</h3>
     <div class="table-scroll"><table class="grid-table">
       ${monthHeaderRow('Program')}
-      ${TRAINING_FIXED.map(k=>`
-        <tr><td class="rowlabel">${k}</td>
-        ${MONTHS.map((m,mi)=>`<td><input type="checkbox" class="tr-fixed" data-key="${k}" data-mi="${mi}" ${d.fixed[k][mi]?'checked':''}></td>`).join('')}
+      ${trainingList.map(k=>`
+        <tr><td class="rowlabel">${esc(k)}</td>
+        ${MONTHS.map((m,mi)=>`<td><input type="checkbox" class="tr-fixed" data-key="${esc(k)}" data-mi="${mi}" ${(d.fixed[k] && d.fixed[k][mi])?'checked':''}></td>`).join('')}
         </tr>`).join('')}
     </table></div>
   `;
-  document.getElementById('ojtAddBtn').addEventListener('click', ()=>{
+  document.getElementById('ojtAddBtn')?.addEventListener('click', ()=>{
     const tbl = document.getElementById('ojtTable');
     const ri = tbl.querySelectorAll('tr.ojt-row').length;
     tbl.insertAdjacentHTML('beforeend', ojtRow({title:'',months:Array(12).fill(false)}, ri));
   });
+  document.getElementById('ojtTable')?.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('.ojt-del-btn');
+    if (delBtn) {
+      delBtn.closest('tr.ojt-row')?.remove();
+    }
+  });
 };
 function ojtRow(r,ri){
   return `<tr class="ojt-row" data-ri="${ri}">
-    <td><input type="text" class="cell-text ojt-title" value="${esc(r.title)}"></td>
-    ${MONTHS.map((m,mi)=>`<td><input type="checkbox" class="ojt-month" data-mi="${mi}" ${r.months[mi]?'checked':''}></td>`).join('')}
+    <td>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="text" class="cell-text ojt-title" style="flex:1;" placeholder="Training description…" value="${esc(r.title || '')}">
+        <button type="button" class="btn-del-row ojt-del-btn" title="Remove row" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>
+      </div>
+    </td>
+    ${MONTHS.map((m,mi)=>`<td><input type="checkbox" class="ojt-month" data-mi="${mi}" ${r.months && r.months[mi]?'checked':''}></td>`).join('')}
   </tr>`;
 }
 COLLECTORS.training = () => {
   const ojt = [];
   document.querySelectorAll('#ojtTable tr.ojt-row').forEach(tr=>{
-    ojt.push({ title: tr.querySelector('.ojt-title').value, months: Array.from(tr.querySelectorAll('.ojt-month')).map(c=>c.checked) });
+    const title = tr.querySelector('.ojt-title')?.value || '';
+    const months = Array.from(tr.querySelectorAll('.ojt-month')).map(c=>c.checked);
+    if (title.trim() || months.some(Boolean)) {
+      ojt.push({ title, months });
+    }
   });
   const fixed = {};
-  TRAINING_FIXED.forEach(k=>{ fixed[k] = Array(12).fill(false); });
-  document.querySelectorAll('.tr-fixed').forEach(c=>{ fixed[c.dataset.key][+c.dataset.mi] = c.checked; });
+  const trainingList = getMasterTrainingsList();
+  trainingList.forEach(k=>{ fixed[k] = Array(12).fill(false); });
+  document.querySelectorAll('.tr-fixed').forEach(c=>{
+    if (!fixed[c.dataset.key]) fixed[c.dataset.key] = Array(12).fill(false);
+    fixed[c.dataset.key][+c.dataset.mi] = c.checked;
+  });
   return { name: val('tr_name'), area: val('tr_area'), ojt, fixed };
 };
 
@@ -3744,24 +4241,77 @@ COLLECTORS.keylearning = () => {
 /* ---------- 7. ACTIVITIES ---------- */
 const ACTIVITY_ROWS = ['Participation in Committees','Sports','First Aid','Safety Committee','Canteen Committee','Cultural Activities','Participation in CI-meet'];
 RENDERERS.activities = (el, d) => {
-  d = Object.assign({rows:{}}, d);
-  ACTIVITY_ROWS.forEach(k=>{ if(!d.rows[k]) d.rows[k] = Array(12).fill(false); });
+  d = Object.assign({rows:{}, custom:[]}, d);
+  if (!Array.isArray(d.custom)) d.custom = [];
+  if (!d.custom.length) d.custom = [{title:'', months:Array(12).fill(false)}];
+  const actList = getMasterActivitiesList();
+  actList.forEach(k=>{ if(!d.rows[k]) d.rows[k] = Array(12).fill(false); });
   el.innerHTML = `
     <h2 class="section-title">Participation in Other Activities</h2>
+
+    <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6b6455;margin:16px 0 8px;">Standard Plant Activities</h3>
     <div class="table-scroll"><table class="grid-table">
       ${monthHeaderRow('Particular')}
-      ${ACTIVITY_ROWS.map(k=>`
-        <tr><td class="rowlabel">${k}</td>
-        ${MONTHS.map((m,mi)=>`<td><input type="checkbox" class="ac-cell" data-key="${k}" data-mi="${mi}" ${d.rows[k][mi]?'checked':''}></td>`).join('')}
+      ${actList.map(k=>`
+        <tr><td class="rowlabel">${esc(k)}</td>
+        ${MONTHS.map((m,mi)=>`<td><input type="checkbox" class="ac-cell" data-key="${esc(k)}" data-mi="${mi}" ${(d.rows[k] && d.rows[k][mi])?'checked':''}></td>`).join('')}
         </tr>`).join('')}
     </table></div>
+
+    <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6b6455;margin:24px 0 8px;">Custom / Additional Activities</h3>
+    <p class="small-note" style="margin-bottom:8px;">Add your own additional activities, committee roles, or plant initiatives here.</p>
+    <div class="table-scroll"><table class="grid-table" id="actCustomTable">
+      ${monthHeaderRow('Custom Activity')}
+      ${d.custom.map((r, ri) => actCustomRow(r, ri)).join('')}
+    </table></div>
+    <button type="button" class="addrow-btn" id="actAddCustomBtn">+ Add Custom Activity</button>
   `;
+
+  document.getElementById('actAddCustomBtn')?.addEventListener('click', () => {
+    const tbl = document.getElementById('actCustomTable');
+    const ri = tbl.querySelectorAll('tr.act-custom-row').length;
+    tbl.insertAdjacentHTML('beforeend', actCustomRow({title:'', months:Array(12).fill(false)}, ri));
+  });
+
+  document.getElementById('actCustomTable')?.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('.act-custom-del-btn');
+    if (delBtn) {
+      delBtn.closest('tr.act-custom-row')?.remove();
+    }
+  });
 };
+
+function actCustomRow(r, ri) {
+  return `<tr class="act-custom-row" data-ri="${ri}">
+    <td>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="text" class="cell-text act-custom-title" style="flex:1;" placeholder="Activity description…" value="${esc(r.title || '')}">
+        <button type="button" class="btn-del-row act-custom-del-btn" title="Remove row" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>
+      </div>
+    </td>
+    ${MONTHS.map((m, mi) => `<td><input type="checkbox" class="act-custom-month" data-mi="${mi}" ${r.months && r.months[mi] ? 'checked' : ''}></td>`).join('')}
+  </tr>`;
+}
+
 COLLECTORS.activities = () => {
   const rows = {};
-  ACTIVITY_ROWS.forEach(k=>{ rows[k] = Array(12).fill(false); });
-  document.querySelectorAll('.ac-cell').forEach(c=>{ rows[c.dataset.key][+c.dataset.mi] = c.checked; });
-  return { rows };
+  const actList = getMasterActivitiesList();
+  actList.forEach(k => { rows[k] = Array(12).fill(false); });
+  document.querySelectorAll('.ac-cell').forEach(c => {
+    if (!rows[c.dataset.key]) rows[c.dataset.key] = Array(12).fill(false);
+    rows[c.dataset.key][+c.dataset.mi] = c.checked;
+  });
+
+  const custom = [];
+  document.querySelectorAll('#actCustomTable tr.act-custom-row').forEach(tr => {
+    const title = tr.querySelector('.act-custom-title')?.value || '';
+    const months = Array.from(tr.querySelectorAll('.act-custom-month')).map(c => c.checked);
+    if (title.trim() || months.some(Boolean)) {
+      custom.push({ title, months });
+    }
+  });
+
+  return { rows, custom };
 };
 
 /* ---------- 8. SWOT ANALYSIS ---------- */
@@ -3853,15 +4403,19 @@ COLLECTORS.selfdev = () => ({
 
 /* ---------- 10. SUPERVISOR REMARKS ---------- */
 const SUP_CRITERIA = [
-  ['Performance on the Job',20],['Attendance',10],['Work Performance',20],
-  ['Line Performance',20],['Recognition',10],['Documentation (Growth File)',10],
-  ['AHPS / LEAN Participation',10],
+  ['Performance on the Job', 20, 12],
+  ['Attendance', 10, 6],
+  ['Work Performance', 20, 12],
+  ['Line Performance', 20, 12],
+  ['Recognition', 10, 6],
+  ['Documentation (Growth File)', 10, 6],
+  ['AHPS / LEAN Participation', 10, 6],
 ];
 RENDERERS.supervisor = (el, d) => {
   d = Object.assign({name:'',area:'',scores:{},signature:''}, d);
   SUP_CRITERIA.forEach(([k])=>{ if(!d.scores[k]) d.scores[k] = Array(12).fill(''); });
   
-  const isSup = currentRole === 'supervisor' || currentExactRole !== 'Shop Floor Employee';
+  const isSup = currentRole === 'supervisor' || (currentExactRole !== 'Employee' && currentExactRole !== 'Shop Floor Employee');
   const a = activeEmployeeInfo?.assessment;
   const currentScore = (a && a.tlScore !== null && a.tlScore !== undefined) ? a.tlScore : (a?.score !== null && a?.score !== undefined ? a.score : null);
   const ratingGrade = a?.ratingGrade || '';
@@ -3889,26 +4443,85 @@ RENDERERS.supervisor = (el, d) => {
       <div class="field-block"><label class="f">Name</label><input type="text" id="sr_name" value="${esc(d.name)}"></div>
       <div class="field-block"><label class="f">Area</label><input type="text" id="sr_area" value="${esc(d.area)}"></div>
     </div>
+    <div style="margin: 12px 0; background:#f0f7ff; border:1px solid #cce3ff; border-radius:8px; padding:10px 14px; font-size:12.5px; color:#0c4a6e; display:flex; align-items:center; gap:8px;">
+      <span style="font-size:16px;">ℹ️</span>
+      <span><strong>Marking Scheme &amp; Minimum 60% Rule:</strong> A minimum of 60% marks must be awarded for each section (Performance &ge; 12/20, Attendance &ge; 6/10, etc.). Team Leaders are not allowed to score below 60%.</span>
+    </div>
     <div class="table-scroll"><table class="grid-table" id="srTable">
       <tr><th>Criteria</th><th>Max Marks</th>${MONTHS.map(m=>`<th>${m}</th>`).join('')}</tr>
-      ${SUP_CRITERIA.map(([k,max])=>`
-        <tr><td class="rowlabel">${k}</td><td>${max}</td>
-        ${MONTHS.map((m,mi)=>`<td><input type="number" min="0" max="${max}" class="sr-cell" data-key="${k}" data-mi="${mi}" value="${esc(d.scores[k][mi])}"></td>`).join('')}
+      ${SUP_CRITERIA.map(([k, max, min60])=>`
+        <tr>
+          <td class="rowlabel">
+            <div style="font-weight:600;">${k}</div>
+            <div style="font-size:10.5px;color:var(--ink-dim);font-weight:normal;">Min 60%: ${min60} marks</div>
+          </td>
+          <td style="text-align:center;font-weight:700;">${max}</td>
+          ${MONTHS.map((m,mi)=>`<td><input type="number" min="${min60}" max="${max}" class="sr-cell" data-key="${k}" data-mi="${mi}" data-min="${min60}" data-max="${max}" value="${esc(d.scores[k][mi])}"></td>`).join('')}
         </tr>`).join('')}
-      <tr class="total-row"><td class="rowlabel">Total</td><td>100</td>
+      <tr class="total-row"><td class="rowlabel">Total (Min 60)</td><td style="text-align:center;font-weight:700;">100</td>
         ${MONTHS.map((m,mi)=>`<td id="sr-total-${mi}">0</td>`).join('')}
       </tr>
     </table></div>
-    <div class="field-block" style="max-width:320px;">
+    <div id="srTableNotice" style="display:none;margin-top:10px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:8px 12px;border-radius:6px;font-size:12.5px;font-weight:600;"></div>
+    <div class="field-block" style="max-width:320px;margin-top:16px;">
       <label class="f">Supervisor Signature</label>
       <input type="text" id="sr_signature" value="${esc(d.signature)}">
     </div>
   `;
   const recalcTotals = ()=>{
+    let hasUnder60 = false;
+    let under60Msg = '';
+    const noticeEl = document.getElementById('srTableNotice');
+
+    document.querySelectorAll('.sr-cell').forEach(inp => {
+      const raw = inp.value.trim();
+      const min = parseFloat(inp.dataset.min) || 0;
+      const max = parseFloat(inp.dataset.max) || 100;
+      if (raw !== '') {
+        const val = parseFloat(raw);
+        if (isNaN(val) || val < min) {
+          inp.style.borderColor = '#ef4444';
+          inp.style.backgroundColor = '#fef2f2';
+          hasUnder60 = true;
+          if (!under60Msg) under60Msg = `Minimum 60% required: "${inp.dataset.key}" cannot be less than ${min} / ${max} marks.`;
+        } else if (val > max) {
+          inp.style.borderColor = '#ef4444';
+          inp.style.backgroundColor = '#fef2f2';
+          hasUnder60 = true;
+          if (!under60Msg) under60Msg = `"${inp.dataset.key}" cannot exceed ${max} marks.`;
+        } else {
+          inp.style.borderColor = '';
+          inp.style.backgroundColor = '';
+        }
+      } else {
+        inp.style.borderColor = '';
+        inp.style.backgroundColor = '';
+      }
+    });
+
     for(let mi=0; mi<12; mi++){
       let sum = 0;
       document.querySelectorAll(`.sr-cell[data-mi="${mi}"]`).forEach(inp=>{ sum += parseFloat(inp.value)||0; });
-      document.getElementById(`sr-total-${mi}`).textContent = sum;
+      const totEl = document.getElementById(`sr-total-${mi}`);
+      if (totEl) {
+        totEl.textContent = sum;
+        if (sum > 0 && sum < 60) {
+          totEl.style.color = '#dc2626';
+          totEl.style.fontWeight = '800';
+        } else {
+          totEl.style.color = '';
+          totEl.style.fontWeight = '';
+        }
+      }
+    }
+
+    if (noticeEl) {
+      if (hasUnder60 && isSup) {
+        noticeEl.textContent = under60Msg;
+        noticeEl.style.display = 'block';
+      } else {
+        noticeEl.style.display = 'none';
+      }
     }
   };
   document.querySelectorAll('.sr-cell').forEach(inp=> inp.addEventListener('input', recalcTotals));
@@ -3930,7 +4543,31 @@ RENDERERS.supervisor = (el, d) => {
 COLLECTORS.supervisor = () => {
   const scores = {};
   SUP_CRITERIA.forEach(([k])=>{ scores[k] = Array(12).fill(''); });
-  document.querySelectorAll('.sr-cell').forEach(inp=>{ scores[inp.dataset.key][+inp.dataset.mi] = inp.value; });
+  let hasUnder60 = false;
+  let under60Error = '';
+
+  document.querySelectorAll('.sr-cell').forEach(inp=>{
+    const raw = inp.value.trim();
+    scores[inp.dataset.key][+inp.dataset.mi] = raw;
+    if (raw !== '') {
+      const val = parseFloat(raw);
+      const min = parseFloat(inp.dataset.min) || 0;
+      const max = parseFloat(inp.dataset.max) || 100;
+      if (isNaN(val) || val < min) {
+        hasUnder60 = true;
+        if (!under60Error) under60Error = `Minimum 60% required: "${inp.dataset.key}" cannot be scored less than ${min} / ${max} marks.`;
+      } else if (val > max) {
+        hasUnder60 = true;
+        if (!under60Error) under60Error = `"${inp.dataset.key}" cannot exceed ${max} marks.`;
+      }
+    }
+  });
+
+  if (hasUnder60) {
+    showToast(under60Error);
+    throw new Error(under60Error);
+  }
+
   return { name: val('sr_name'), area: val('sr_area'), scores, signature: val('sr_signature') };
 };
 

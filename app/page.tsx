@@ -60,7 +60,7 @@ export default function Page() {
         <img class="login-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARcAAAA9CAYAAACHky0wAAAFZ0lEQVR4nO3dy4scRRwH8O+3umd3NiZRhKCY1+4aiJLsahADHgSj/gchIB50NgfFgw8ExQeiFz15EA8eQg5J8OAfoGAOuQhiQIKEzaKE6I6axyGaRDZuMo/6/TxsIj5n51WTnuz3c66aqm7ob09Xd1VxcqrikH8hM2RsbDh5/NCZdspPTlUugrwNPiynkwC8YQtYW60euNqq5Lpte1av4arnQb7XVUsMcI+zNDz3/dzBLzutv2XHzDqrx5dDPvqaWaObLjgcZ2tNu+/Md4d+bVVw69a9a2olOxro9wJkpw2FrIQYm2+tsrEP5uY+utxNZ9tx546ZdeWmvZGHkZe6PCfJhRvdARG5OSlcRCQJhYuIJKFwEZEkFC4ikoTCRUSSULiISBIKFxFJQuEiIkkoXEQkCYWLiCShcBGRJPIe6zuZkQwAlpuwR5g3AXfH0qy5LhAh5G215TC4xR7aGignA8kMyx/bdYS7wX1ojlEKhwghw7VJrH3/9Z7ChQx0j18bmt8SGGlV1g11ko+QYZO7ddMY3P1C9NpnBEst23I0Sawns11dtTVgS+fRjhvi8eXO43UO1AncQ2Y7h+EYpXDczRYi7DCBJtj/G1Rv4RJyxFj7NGa1/VmzvLZlYcclAAdCyLoKFyIAiGfqxOu5cU2rssFsEQyPM892eSz+hceQw2L9iJXi+6znt7ZTpxlsoWScCVm+02M9dRflJuTABVp8F3m4Yhb6PkTSW7iACM7T1W8+OQvg7HLlJ6Yrl7rORxJwLJ5uc32V8e2VH8LQDCkRcJ778djH5wCca7fW3dMzPye44cgKQYba/ImJWeCdJHfgnq4+B0B62wEVvMer3du/kgiUUjxHpkJ61mkdM8uH5wilcNw5Pl5t6zG8G8NyaxeRIaNwEZEkFC4ikoTCRUSSULjIYDii0Re6qTpav/wbiJY7FEjnnLDldn7oRa9f6Iosy90AYgsR9k9sr1wgO7qp+VVgFMBm82aqLq5EJLFpcqpyBEBM0YDCRQYkrGbIHgxdfJfjcNAN7qapDn1EcFUI+aOpfl/hIgPicGv2+uWRgqWvHCk3VNOYi4gkoXARkSQULiKShMJliBHU1CIpLIXLEHO4BjilsPS2qAAs1uHwtye2P/0K4G0GPg1E2bSWixSUwqUQHEQYQ8BYh9UwTMtKyMqicCkMV07ITUVjLiKShMJFRJLQY5EMCMEQQLCjp78/N73Q3KIErm/Vk4bCRQbC4b/D4ikDLhLoZL1gM2CUwHqQG+EamOoXhy+aNY5Cs6JlWJEB8DjvwAvzswe/wAPPtNx36m+O7Wts3PrEXaWR0RcDS6+ap5tot8K4O36aP3HgsVQNKFxkUDx4XFqQ5di+jhJizFlvepq760pGRxgfr5RTLRilAV0ZHM+6Gi+xW8qE62vkYaNwEZEkFC4ikoTCRUSS0IBuYbDzLzg0t6iACLrFcrlZu9E9WRbp1ermZDNfFS6F4XUYaiDbixh3BzACYjRtv6Qj7gB4xy+LjanJ+59csDjS8R7g/1SdHT+ZYrN4dxud2HZqivlTV8xC359iFC4FwJDDLR4x2OdA2zOjrwbgYYZ8t5u23CgK9wgHdoXc1iOWGoHdv+VykIT7hofm9p7+Clf62U8AIHA7QvYmDM1e+vl/FC4FEJghsnm4Onvww07qTU5VzgfmuyMULkXhbh5CmCbD9F8mL3RpqX75/MizQN/DhQxhbQjZnt77+d8ULgVwbeik3HE99zHXmEvR0JfmQfXtB9O9dXFYwn+9elskIkkoXEQkCYWLiCShcBGRJBQuIpKEwkVEklC4iEgSChcRSULhIiJJKFxEJAmFi4gkoXARkST+AIJPzrvPGB5jAAAAAElFTkSuQmCC" alt="Mahle">
         <h1 id="loginHeading">Sign In</h1>
         <div class="role-toggle" id="roleToggle">
-          <button type="button" class="active" data-role="employee">Shop Floor Employee</button>
+          <button type="button" class="active" data-role="employee">Employee</button>
           <button type="button" data-role="supervisor">Manager / Admin</button>
         </div>
         <div class="field">
@@ -132,7 +132,7 @@ export default function Page() {
                 <div class="emp-hero-meta">
                   <span class="emp-hero-pill" id="empHeroCode">ID: —</span>
                   <span class="emp-hero-pill" id="empHeroUnit">Unit</span>
-                  <span class="emp-hero-pill" id="empHeroRole">Shop Floor Employee</span>
+                  <span class="emp-hero-pill" id="empHeroRole">Employee</span>
                   <span class="emp-hero-pill" id="empHeroDept">Line Operations</span>
                 </div>
               </div>
@@ -162,13 +162,13 @@ export default function Page() {
           <!-- Current Month Scorecard -->
           <div id="employeeScorecard" class="hidden"></div>
 
-          <!-- 10 Sections Quick-Jump Hub -->
+          <!-- Passport Sections Quick-Jump Hub -->
           <div class="emp-sheets-title-row">
             <div>
-              <h3 style="margin:0;font-family:var(--font-display);font-size:17px;">Growth Performance Passport · 10 Sections</h3>
+              <h3 style="margin:0;font-family:var(--font-display);font-size:17px;">Growth Performance Passport · Sections</h3>
               <p style="margin:2px 0 0;font-size:12.5px;color:var(--ink-dim);">Select any section below to update daily records, competencies, and performance metrics.</p>
             </div>
-            <span class="badge badge-score">10 Sections Active</span>
+            <span class="badge badge-score">Passport Sections Active</span>
           </div>
           <div class="emp-sheets-grid" id="empSheetsGrid"></div>
         </div>
@@ -206,6 +206,10 @@ export default function Page() {
               <button type="button" class="btn btn-xs btn-ghost" id="unitBarEditBtn" style="margin-left:auto;font-size:12px;display:none;align-items:center;gap:4px;border:1px dashed var(--panel-line);padding:4px 10px;border-radius:20px;font-weight:600;color:var(--mahle-blue);" title="Rename Plant Units (Admin & HR Head)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 <span>Edit Unit Names</span>
+              </button>
+              <button type="button" class="btn btn-xs btn-ghost" id="adminMasterCatalogBtn" style="margin-left:8px;font-size:12px;display:none;align-items:center;gap:4px;border:1px dashed var(--panel-line);padding:4px 10px;border-radius:20px;font-weight:600;color:var(--mahle-blue);" title="Manage Training Matrix & Activities (Super Admin & HR Head)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                <span>Training &amp; Activities</span>
               </button>
             </div>
 
@@ -885,8 +889,8 @@ export default function Page() {
 
           <span class="lookup-chips-label">Quick Suggestions / Sample Employees:</span>
           <div class="lookup-chips" id="lookupChips">
-            <button class="lookup-chip" data-id="KA1042">KA1042 · Shop Floor Operator</button>
-            <button class="lookup-chip" data-id="NTK1042">NTK1042 · Shop Floor Operator</button>
+            <button class="lookup-chip" data-id="KA1042">KA1042 · Employee</button>
+            <button class="lookup-chip" data-id="NTK1042">NTK1042 · Employee</button>
             <button class="lookup-chip" data-id="K01001">K01001 · Team Leader</button>
             <button class="lookup-chip" data-id="UA1001">UA1001 · Unit Admin</button>
           </div>
@@ -1005,6 +1009,164 @@ export default function Page() {
       </div>
     </section>
 
+    <!-- DEDICATED SCREEN: MASTER TRAINING & ACTIVITIES CATALOG -->
+    <section id="screen-master-items" class="hidden">
+      <div class="menu-wrap" style="max-width:1160px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;">
+          <div>
+            <div class="eyebrow" style="margin-bottom:4px;">Master Catalog · Super Admin &amp; HR Head</div>
+            <h1 style="margin:0;font-size:26px;">Training Matrix &amp; Plant Activities Catalog</h1>
+            <p class="menu-lead" style="margin:6px 0 0;max-width:760px;">
+              Configure company-wide training matrix courses (Sheet 05) and standard plant activity categories (Sheet 07).
+              Any added or removed items instantly synchronize with all employees' growth passport records across all plants.
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button class="btn btn-sm btn-ghost" id="masterItemsRefreshBtn" title="Reload catalog from database">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-right:5px;"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              Refresh Catalog
+            </button>
+            <button class="btn btn-sm btn-primary" id="masterItemsBackBtn">Back to Dashboard</button>
+          </div>
+        </div>
+
+        <!-- Catalog Status & Summary Bar -->
+        <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:12px 18px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="display:inline-block;width:9px;height:9px;background:#16a34a;border-radius:50%;"></span>
+              <span style="font-weight:700;font-size:12.5px;color:#1e2a63;">Live Synchronized</span>
+            </div>
+            <span style="color:var(--panel-line);">|</span>
+            <span style="font-size:12.5px;color:var(--ink);font-weight:600;">
+              Training Programs: <strong id="masterTrCount" style="color:var(--mahle-blue);">9</strong>
+            </span>
+            <span style="color:var(--panel-line);">|</span>
+            <span style="font-size:12.5px;color:var(--ink);font-weight:600;">
+              Plant Activities: <strong id="masterAcCount" style="color:var(--mahle-blue);">7</strong>
+            </span>
+          </div>
+          <div style="font-size:12px;color:var(--ink-dim);font-family:var(--font-mono);">
+            Scope: All Manufacturing State Units
+          </div>
+        </div>
+
+        <!-- Split Grid: Training Matrix Programs (Left) & Plant Activities (Right) -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(460px, 1fr));gap:24px;">
+
+          <!-- SECTION 1: TRAINING MATRIX (SHEET 05) -->
+          <div style="background:#fff;border:1px solid var(--panel-line);border-radius:12px;padding:22px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--panel-line);">
+              <div>
+                <div style="display:inline-block;padding:2px 8px;border-radius:4px;background:#eef2fa;color:#1e2a63;font-size:10.5px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;font-family:var(--font-mono);margin-bottom:6px;">
+                  Sheet 05 · Program Training
+                </div>
+                <h2 style="margin:0;font-size:17px;color:#1e2a63;">Training Matrix Catalog</h2>
+                <div style="font-size:12px;color:var(--ink-dim);margin-top:2px;">
+                  Company training courses that employees review and mark monthly.
+                </div>
+              </div>
+              <span class="badge badge-evaluated" id="trBadgeCount">9 Topics</span>
+            </div>
+
+            <!-- Add Training Form -->
+            <div style="background:#f9fafc;border:1px dashed #c9d5ec;border-radius:8px;padding:14px;margin-bottom:16px;">
+              <label class="f" for="newTrainingInput" style="font-size:12px;font-weight:700;color:#1e2a63;display:block;margin-bottom:6px;">
+                + Add New Training Course / Topic
+              </label>
+              <div style="display:flex;gap:8px;">
+                <input type="text" id="newTrainingInput" placeholder="e.g. Poka-Yoke / Error Proofing, 5S Discipline, Six Sigma Basics..." style="flex:1;padding:8px 12px;border:1px solid var(--panel-line);border-radius:6px;font-size:13px;background:#fff;">
+                <button type="button" class="btn btn-primary" id="addTrainingBtn" style="white-space:nowrap;padding:8px 14px;">
+                  Add Course
+                </button>
+              </div>
+              <div class="lookup-error hidden" id="addTrainingError" style="margin-top:8px;font-size:12px;"></div>
+            </div>
+
+            <!-- Filter & List Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+              <input type="text" id="searchTrainingInput" placeholder="Search training courses..." style="width:100%;padding:6px 10px;border:1px solid var(--panel-line);border-radius:6px;font-size:12.5px;background:#fff;">
+            </div>
+
+            <!-- Training Items Table -->
+            <div style="max-height:480px;overflow-y:auto;border:1px solid var(--panel-line);border-radius:8px;">
+              <table class="grid-table" style="margin:0;width:100%;">
+                <thead>
+                  <tr style="background:#f8f9fd;">
+                    <th style="width:48px;text-align:center;">#</th>
+                    <th style="text-align:left;">Course / Topic Name</th>
+                    <th style="width:80px;text-align:center;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="masterTrainingTableBody">
+                  <tr><td colspan="3" style="text-align:center;padding:18px;color:var(--ink-dim);">Loading training catalog…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="small-note" style="margin-top:10px;font-size:11.5px;color:var(--ink-dim);">
+              Tip: Deleting a course removes it from the standard monthly matrix for all units.
+            </div>
+          </div>
+
+          <!-- SECTION 2: ACTIVITIES (SHEET 07) -->
+          <div style="background:#fff;border:1px solid var(--panel-line);border-radius:12px;padding:22px;box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--panel-line);">
+              <div>
+                <div style="display:inline-block;padding:2px 8px;border-radius:4px;background:#eef2fa;color:#1e2a63;font-size:10.5px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;font-family:var(--font-mono);margin-bottom:6px;">
+                  Sheet 07 · Plant Engagement
+                </div>
+                <h2 style="margin:0;font-size:17px;color:#1e2a63;">Plant Activities Catalog</h2>
+                <div style="font-size:12px;color:var(--ink-dim);margin-top:2px;">
+                  Committees, sports, and plant events available for employee participation.
+                </div>
+              </div>
+              <span class="badge badge-evaluated" id="acBadgeCount">7 Activities</span>
+            </div>
+
+            <!-- Add Activity Form -->
+            <div style="background:#f9fafc;border:1px dashed #c9d5ec;border-radius:8px;padding:14px;margin-bottom:16px;">
+              <label class="f" for="newActivityInput" style="font-size:12px;font-weight:700;color:#1e2a63;display:block;margin-bottom:6px;">
+                + Add New Plant Activity
+              </label>
+              <div style="display:flex;gap:8px;">
+                <input type="text" id="newActivityInput" placeholder="e.g. Energy Conservation Club, Kaizen Competition, Blood Donation..." style="flex:1;padding:8px 12px;border:1px solid var(--panel-line);border-radius:6px;font-size:13px;background:#fff;">
+                <button type="button" class="btn btn-primary" id="addActivityBtn" style="white-space:nowrap;padding:8px 14px;">
+                  Add Activity
+                </button>
+              </div>
+              <div class="lookup-error hidden" id="addActivityError" style="margin-top:8px;font-size:12px;"></div>
+            </div>
+
+            <!-- Filter & List Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+              <input type="text" id="searchActivityInput" placeholder="Search plant activities..." style="width:100%;padding:6px 10px;border:1px solid var(--panel-line);border-radius:6px;font-size:12.5px;background:#fff;">
+            </div>
+
+            <!-- Activity Items Table -->
+            <div style="max-height:480px;overflow-y:auto;border:1px solid var(--panel-line);border-radius:8px;">
+              <table class="grid-table" style="margin:0;width:100%;">
+                <thead>
+                  <tr style="background:#f8f9fd;">
+                    <th style="width:48px;text-align:center;">#</th>
+                    <th style="text-align:left;">Activity Title / Committee</th>
+                    <th style="width:80px;text-align:center;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="masterActivityTableBody">
+                  <tr><td colspan="3" style="text-align:center;padding:18px;color:var(--ink-dim);">Loading activities catalog…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="small-note" style="margin-top:10px;font-size:11.5px;color:var(--ink-dim);">
+              Tip: Employees can also add their own custom activities directly on Sheet 07.
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
     <!-- GROWTH MENU / RECORD -->
     <section id="screen-menu" class="hidden">
       <div class="menu-wrap">
@@ -1073,47 +1235,112 @@ export default function Page() {
   </div>
 </div>
 
-<!-- TL Evaluation Modal (1 to 10 Scoring) -->
+<!-- TL Evaluation Modal (Official 7 Metrics with Minimum 60% Enforced) -->
 <div id="evalModal" class="modal-backdrop hidden">
-  <div class="modal-card">
-    <h2 id="evalModalTitle">Evaluate Employee</h2>
-    <div class="modal-sub" id="evalModalSub">Monthly Assessment (Scale 1.0 - 10.0)</div>
+  <div class="modal-card" style="max-width:640px;max-height:92vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+      <h2 id="evalModalTitle" style="margin:0;">Evaluate Employee</h2>
+      <button type="button" class="btn btn-sm btn-ghost" id="evalCloseXBtn">Close</button>
+    </div>
+    <div class="modal-sub" id="evalModalSub">Official Monthly Assessment (100 Marks · Scale 1.0 - 10.0)</div>
     
-    <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:16px;margin-bottom:18px;">
+    <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:10px;padding:14px 18px;margin-bottom:18px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <label style="font-weight:700;font-size:14px;">Overall Score (1.0 to 10.0):</label>
+        <label style="font-weight:700;font-size:14px;">Total Score (Out of 100 / Scale 1.0 - 10.0):</label>
         <div style="display:flex;align-items:center;gap:8px;">
-          <input type="number" id="evalOverallScore" min="1.0" max="10.0" step="0.1" value="8.5" style="width:80px;font-size:16px;font-weight:700;text-align:center;padding:6px;border:2px solid #1e2a63;border-radius:6px;font-family:var(--font-mono);">
+          <input type="number" id="evalOverallScore" min="6.0" max="10.0" step="0.1" value="8.5" readonly style="width:75px;font-size:16px;font-weight:700;text-align:center;padding:5px;border:2px solid #1e2a63;border-radius:6px;background:#eef2fa;font-family:var(--font-mono);">
           <span style="font-weight:700;color:var(--ink-dim);">/ 10</span>
+          <span id="evalTotalMarksBadge" style="font-size:13px;font-weight:700;color:#1e2a63;background:#e2e9f8;padding:4px 8px;border-radius:6px;margin-left:4px;">85 / 100</span>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:12px;color:var(--ink-dim);">Rating Tier:</span>
         <span class="badge badge-evaluated" id="evalGradeBadge">Grade A (Outstanding)</span>
       </div>
+      <div style="margin-top:8px;font-size:11.5px;color:#a67300;font-weight:600;display:flex;align-items:center;gap:5px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <span>Mandatory Policy: Minimum 60% marks required across all sections (cannot score less).</span>
+      </div>
     </div>
 
     <div style="margin-bottom:16px;">
-      <div style="font-size:12px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);margin-bottom:10px;text-transform:uppercase;">Criteria Breakdown (1 - 10)</div>
-      <div class="criteria-row">
-        <label>1. Safety & 5S Discipline</label>
-        <input type="number" id="cSafety" min="1" max="10" step="0.5" value="8.5">
+      <div style="font-size:12px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.04em;">Official Marking Scheme (7 Metrics)</div>
+      
+      <div class="criteria-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid var(--panel-line);border-radius:8px;">
+        <div>
+          <div style="font-weight:700;font-size:13.5px;">1. Performance on the Job</div>
+          <div style="font-size:11.5px;color:var(--ink-dim);">Max: 20 Marks · <strong style="color:#1e2a63;">Min 60%: 12 Marks</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="cJobPerf" min="12" max="20" step="1" value="17" class="eval-metric-input" data-min="12" data-max="20" data-name="Performance on the Job" style="width:75px;padding:6px 8px;border:1px solid var(--panel-line);border-radius:6px;text-align:center;font-weight:700;font-family:var(--font-mono);font-size:14px;">
+          <span style="font-size:12px;font-weight:600;color:var(--ink-dim);">/ 20</span>
+        </div>
       </div>
-      <div class="criteria-row">
-        <label>2. Quality & Defect Prevention</label>
-        <input type="number" id="cQuality" min="1" max="10" step="0.5" value="8.5">
+
+      <div class="criteria-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid var(--panel-line);border-radius:8px;">
+        <div>
+          <div style="font-weight:700;font-size:13.5px;">2. Attendance</div>
+          <div style="font-size:11.5px;color:var(--ink-dim);">Max: 10 Marks · <strong style="color:#1e2a63;">Min 60%: 6 Marks</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="cAttendance" min="6" max="10" step="1" value="9" class="eval-metric-input" data-min="6" data-max="10" data-name="Attendance" style="width:75px;padding:6px 8px;border:1px solid var(--panel-line);border-radius:6px;text-align:center;font-weight:700;font-family:var(--font-mono);font-size:14px;">
+          <span style="font-size:12px;font-weight:600;color:var(--ink-dim);">/ 10</span>
+        </div>
       </div>
-      <div class="criteria-row">
-        <label>3. Productivity & Output Target</label>
-        <input type="number" id="cProd" min="1" max="10" step="0.5" value="8.5">
+
+      <div class="criteria-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid var(--panel-line);border-radius:8px;">
+        <div>
+          <div style="font-weight:700;font-size:13.5px;">3. Work Performance</div>
+          <div style="font-size:11.5px;color:var(--ink-dim);">Max: 20 Marks · <strong style="color:#1e2a63;">Min 60%: 12 Marks</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="cWorkPerf" min="12" max="20" step="1" value="17" class="eval-metric-input" data-min="12" data-max="20" data-name="Work Performance" style="width:75px;padding:6px 8px;border:1px solid var(--panel-line);border-radius:6px;text-align:center;font-weight:700;font-family:var(--font-mono);font-size:14px;">
+          <span style="font-size:12px;font-weight:600;color:var(--ink-dim);">/ 20</span>
+        </div>
       </div>
-      <div class="criteria-row">
-        <label>4. Attendance & Punctuality</label>
-        <input type="number" id="cAttend" min="1" max="10" step="0.5" value="9.0">
+
+      <div class="criteria-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid var(--panel-line);border-radius:8px;">
+        <div>
+          <div style="font-weight:700;font-size:13.5px;">4. Line Performance</div>
+          <div style="font-size:11.5px;color:var(--ink-dim);">Max: 20 Marks · <strong style="color:#1e2a63;">Min 60%: 12 Marks</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="cLinePerf" min="12" max="20" step="1" value="17" class="eval-metric-input" data-min="12" data-max="20" data-name="Line Performance" style="width:75px;padding:6px 8px;border:1px solid var(--panel-line);border-radius:6px;text-align:center;font-weight:700;font-family:var(--font-mono);font-size:14px;">
+          <span style="font-size:12px;font-weight:600;color:var(--ink-dim);">/ 20</span>
+        </div>
       </div>
-      <div class="criteria-row">
-        <label>5. Kaizen & Improvement Ideas</label>
-        <input type="number" id="cKaizen" min="1" max="10" step="0.5" value="8.0">
+
+      <div class="criteria-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid var(--panel-line);border-radius:8px;">
+        <div>
+          <div style="font-weight:700;font-size:13.5px;">5. Recognition</div>
+          <div style="font-size:11.5px;color:var(--ink-dim);">Max: 10 Marks · <strong style="color:#1e2a63;">Min 60%: 6 Marks</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="cRecognition" min="6" max="10" step="1" value="8" class="eval-metric-input" data-min="6" data-max="10" data-name="Recognition" style="width:75px;padding:6px 8px;border:1px solid var(--panel-line);border-radius:6px;text-align:center;font-weight:700;font-family:var(--font-mono);font-size:14px;">
+          <span style="font-size:12px;font-weight:600;color:var(--ink-dim);">/ 10</span>
+        </div>
+      </div>
+
+      <div class="criteria-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid var(--panel-line);border-radius:8px;">
+        <div>
+          <div style="font-weight:700;font-size:13.5px;">6. Documentation (Growth File)</div>
+          <div style="font-size:11.5px;color:var(--ink-dim);">Max: 10 Marks · <strong style="color:#1e2a63;">Min 60%: 6 Marks</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="cDocGrowth" min="6" max="10" step="1" value="8" class="eval-metric-input" data-min="6" data-max="10" data-name="Documentation (Growth File)" style="width:75px;padding:6px 8px;border:1px solid var(--panel-line);border-radius:6px;text-align:center;font-weight:700;font-family:var(--font-mono);font-size:14px;">
+          <span style="font-size:12px;font-weight:600;color:var(--ink-dim);">/ 10</span>
+        </div>
+      </div>
+
+      <div class="criteria-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:#fff;border:1px solid var(--panel-line);border-radius:8px;">
+        <div>
+          <div style="font-weight:700;font-size:13.5px;">7. AHPS / LEAN Participation</div>
+          <div style="font-size:11.5px;color:var(--ink-dim);">Max: 10 Marks · <strong style="color:#1e2a63;">Min 60%: 6 Marks</strong></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="cLean" min="6" max="10" step="1" value="9" class="eval-metric-input" data-min="6" data-max="10" data-name="AHPS / LEAN Participation" style="width:75px;padding:6px 8px;border:1px solid var(--panel-line);border-radius:6px;text-align:center;font-weight:700;font-family:var(--font-mono);font-size:14px;">
+          <span style="font-size:12px;font-weight:600;color:var(--ink-dim);">/ 10</span>
+        </div>
       </div>
     </div>
 
@@ -1122,7 +1349,9 @@ export default function Page() {
       <textarea id="evalComments" rows="3" placeholder="Enter comments and guidance for the employee..."></textarea>
     </div>
 
-    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+    <div id="evalModalError" class="lookup-error hidden" style="margin-bottom:12px;background:#fef2f2;border:1px solid #fecaca;padding:8px 12px;border-radius:6px;color:#b91c1c;font-weight:600;font-size:12.5px;"></div>
+
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
       <button type="button" class="btn btn-ghost" id="evalCancelBtn">Cancel</button>
       <button type="button" class="btn btn-primary" id="evalSubmitBtn">Submit Assessment</button>
     </div>
@@ -1131,7 +1360,7 @@ export default function Page() {
 
 <!-- SGL Audit & Verification Modal (Read-Only TL Ratings with Verification Sign-Off) -->
 <div id="sglAuditModal" class="modal-backdrop hidden">
-  <div class="modal-card" style="max-width:620px;">
+  <div class="modal-card" style="max-width:640px;max-height:92vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
       <div>
         <h2 id="sglAuditModalTitle" style="margin:0;">Audit TL Assessment</h2>
@@ -1165,27 +1394,35 @@ export default function Page() {
 
     <!-- Read-Only Criteria Breakdown -->
     <div style="margin-bottom:18px;">
-      <div style="font-size:11.5px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Evaluated Criteria Breakdown (1.0 - 10.0)</div>
+      <div style="font-size:11.5px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Evaluated Marking Breakdown (7 Metrics)</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12.5px;font-weight:600;color:#334155;">1. Safety &amp; 5S Discipline</span>
-          <span class="badge badge-score" id="sglCritSafety">8.5</span>
+          <span style="font-size:12px;font-weight:600;color:#334155;">1. Job Performance</span>
+          <span class="badge badge-score" id="sglCritJobPerf">17 / 20</span>
         </div>
         <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12.5px;font-weight:600;color:#334155;">2. Quality &amp; Zero Defects</span>
-          <span class="badge badge-score" id="sglCritQuality">8.5</span>
+          <span style="font-size:12px;font-weight:600;color:#334155;">2. Attendance</span>
+          <span class="badge badge-score" id="sglCritAttendance">9 / 10</span>
         </div>
         <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12.5px;font-weight:600;color:#334155;">3. Productivity &amp; Output</span>
-          <span class="badge badge-score" id="sglCritProd">8.5</span>
+          <span style="font-size:12px;font-weight:600;color:#334155;">3. Work Performance</span>
+          <span class="badge badge-score" id="sglCritWorkPerf">17 / 20</span>
         </div>
         <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:12.5px;font-weight:600;color:#334155;">4. Attendance &amp; Punctuality</span>
-          <span class="badge badge-score" id="sglCritAttend">9.0</span>
+          <span style="font-size:12px;font-weight:600;color:#334155;">4. Line Performance</span>
+          <span class="badge badge-score" id="sglCritLinePerf">17 / 20</span>
+        </div>
+        <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;font-weight:600;color:#334155;">5. Recognition</span>
+          <span class="badge badge-score" id="sglCritRecognition">8 / 10</span>
+        </div>
+        <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;font-weight:600;color:#334155;">6. Documentation</span>
+          <span class="badge badge-score" id="sglCritDocGrowth">8 / 10</span>
         </div>
         <div style="background:#fff;border:1px solid var(--panel-line);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;grid-column:span 2;">
-          <span style="font-size:12.5px;font-weight:600;color:#334155;">5. Kaizen &amp; Continuous Improvements</span>
-          <span class="badge badge-score" id="sglCritKaizen">8.0</span>
+          <span style="font-size:12px;font-weight:600;color:#334155;">7. AHPS / LEAN Participation</span>
+          <span class="badge badge-score" id="sglCritLean">9 / 10</span>
         </div>
       </div>
     </div>
@@ -1217,7 +1454,7 @@ export default function Page() {
 
 <!-- Super Admin User Management Modal (Add/Edit Employee/Leader/Admin) -->
 <div id="userMgmtModal" class="modal-backdrop hidden">
-  <div class="modal-card" style="max-width:640px;">
+  <div class="modal-card" style="max-width:720px;max-height:92vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
       <h2 id="userMgmtTitle" style="margin:0;">User Account Management</h2>
       <button type="button" class="btn btn-sm btn-ghost" id="userMgmtCloseX">Close</button>
@@ -1241,7 +1478,7 @@ export default function Page() {
         <div class="field-block">
           <label class="f" for="userMgmtRole">System Role *</label>
           <select id="userMgmtRole" required style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;font-weight:600;">
-            <option value="Shop Floor Employee">Shop Floor Employee</option>
+            <option value="Employee">Employee</option>
             <option value="Team Leader (TL)">Team Leader (TL)</option>
             <option value="Senior Group Leader (SGL)">Senior Group Leader (SGL)</option>
             <option value="Unit Admin">Unit Admin</option>
@@ -1266,6 +1503,64 @@ export default function Page() {
           <label class="f" for="userMgmtPassword">Passcode / Password</label>
           <input type="password" id="userMgmtPassword" placeholder="Default: Mahle@123 (or keep existing)" autocomplete="new-password" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;">
           <div class="small-note" id="userMgmtPwNote">Leave blank to keep existing password.</div>
+        </div>
+      </div>
+
+      <!-- Service & Personal Profile (Auto-populates Sheet 01 'About Myself') -->
+      <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+          <div style="font-size:12px;font-family:var(--font-mono);font-weight:700;color:var(--ink-dim);text-transform:uppercase;">
+            Service &amp; Personal Profile
+          </div>
+          <span style="font-size:11px;color:var(--mahle-blue);font-weight:600;">Auto-populates Sheet 01 'About Myself'</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="field-block">
+            <label class="f" for="userMgmtJoiningDate">Date of Joining (Joined On) *</label>
+            <input type="date" id="userMgmtJoiningDate" required style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;font-weight:600;">
+            <div class="small-note">Mandatory for monthly assessment tracking.</div>
+          </div>
+          <div class="field-block">
+            <label class="f" for="userMgmtDob">Date of Birth (Birth Date)</label>
+            <input type="date" id="userMgmtDob" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;">
+            <div class="small-note">Optional · can be updated later.</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="field-block">
+            <label class="f" for="userMgmtFatherName">Father's Name</label>
+            <input type="text" id="userMgmtFatherName" placeholder="e.g. Suresh Kumar" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;">
+            <div class="small-note">Optional · editable later by employee.</div>
+          </div>
+          <div class="field-block">
+            <label class="f" for="userMgmtMobile">Mobile Number</label>
+            <input type="tel" id="userMgmtMobile" placeholder="e.g. 9876543210" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="field-block">
+            <label class="f" for="userMgmtEmail">Email ID</label>
+            <input type="email" id="userMgmtEmail" placeholder="e.g. employee@mahle.com" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;">
+            <div class="small-note">Optional.</div>
+          </div>
+          <div class="field-block">
+            <label class="f" for="userMgmtDesignation">Designation</label>
+            <input type="text" id="userMgmtDesignation" placeholder="e.g. Associate Engineer, Technician" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field-block">
+            <label class="f" for="userMgmtGradeCode">Grade Code</label>
+            <input type="text" id="userMgmtGradeCode" placeholder="e.g. G01, M3, O1" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;">
+          </div>
+          <div class="field-block">
+            <label class="f" for="userMgmtGroupJoiningDate">Group Joining Date</label>
+            <input type="date" id="userMgmtGroupJoiningDate" style="width:100%;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;background:#fff;">
+          </div>
         </div>
       </div>
 
