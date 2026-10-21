@@ -1200,9 +1200,8 @@ async function renderUnitFilterPills() {
   if (!units || !units.length) {
     units = [
       { name: 'Gurugram', code: 'GGN' },
-      { name: 'Khandsa', code: 'K02' },
-      { name: 'State Unit 3', code: 'U03' },
-      { name: 'State Unit 4', code: 'U04' }
+      { name: 'Parwanoo', code: 'PRW' },
+      { name: 'Pune', code: 'PUN' }
     ];
   }
 
