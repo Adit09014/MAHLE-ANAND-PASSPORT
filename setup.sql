@@ -290,25 +290,22 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Role] WHERE [name] = 'Team Leader (TL)')
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Role] WHERE [name] = 'Employee')
     INSERT INTO [dbo].[Role] ([id], [name]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Employee');
 
--- 5.2 Plant / State Units (4 Primary Manufacturing Facilities)
+-- 5.2 Plant / State Units (Primary Manufacturing Facilities)
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Unit] WHERE [name] = 'Gurugram')
     INSERT INTO [dbo].[Unit] ([id], [name], [code], [isActive]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Gurugram', 'GGN', 1);
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Unit] WHERE [name] = 'State Unit 2')
-    INSERT INTO [dbo].[Unit] ([id], [name], [code], [isActive]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'State Unit 2', 'U02', 1);
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Unit] WHERE [name] = 'Parwanoo')
+    INSERT INTO [dbo].[Unit] ([id], [name], [code], [isActive]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Parwanoo', 'PRW', 1);
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Unit] WHERE [name] = 'State Unit 3')
-    INSERT INTO [dbo].[Unit] ([id], [name], [code], [isActive]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'State Unit 3', 'U03', 1);
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Unit] WHERE [name] = 'State Unit 4')
-    INSERT INTO [dbo].[Unit] ([id], [name], [code], [isActive]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'State Unit 4', 'U04', 1);
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Unit] WHERE [name] = 'Pune')
+    INSERT INTO [dbo].[Unit] ([id], [name], [code], [isActive]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Pune', 'PUN', 1);
 
 -- 5.3 Plant Departments
 DECLARE @u1Id NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Unit] WHERE [name] = 'Gurugram');
-DECLARE @u2Id NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Unit] WHERE [name] = 'State Unit 2');
-DECLARE @u3Id NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Unit] WHERE [name] = 'State Unit 3');
-DECLARE @u4Id NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Unit] WHERE [name] = 'State Unit 4');
+DECLARE @u2Id NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Unit] WHERE [name] = 'Parwanoo');
+DECLARE @u3Id NVARCHAR(1000) = (SELECT TOP 1 [id] FROM [dbo].[Unit] WHERE [name] = 'Pune');
 
+-- Gurugram Departments
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Manufacturing / Production' AND [unitId] = @u1Id)
     INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Manufacturing / Production', @u1Id);
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Quality Assurance' AND [unitId] = @u1Id)
@@ -318,16 +315,21 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Assembly Line' A
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Operations' AND [unitId] = @u1Id)
     INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Operations', @u1Id);
 
+-- Parwanoo Departments
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Manufacturing / Production' AND [unitId] = @u2Id)
     INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Manufacturing / Production', @u2Id);
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Operations' AND [unitId] = @u2Id)
     INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Operations', @u2Id);
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Quality Assurance' AND [unitId] = @u2Id)
+    INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Quality Assurance', @u2Id);
 
+-- Pune Departments
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Manufacturing / Production' AND [unitId] = @u3Id)
     INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Manufacturing / Production', @u3Id);
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Manufacturing / Production' AND [unitId] = @u4Id)
-    INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Manufacturing / Production', @u4Id);
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Operations' AND [unitId] = @u3Id)
+    INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Operations', @u3Id);
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Department] WHERE [name] = 'Quality Assurance' AND [unitId] = @u3Id)
+    INSERT INTO [dbo].[Department] ([id], [name], [unitId]) VALUES (CAST(NEWID() AS NVARCHAR(1000)), 'Quality Assurance', @u3Id);
 
 -- 5.4 Active Assessment Cycles
 IF NOT EXISTS (SELECT 1 FROM [dbo].[AssessmentCycle] WHERE [month] = '2026-10')
