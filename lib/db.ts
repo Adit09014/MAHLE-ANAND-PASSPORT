@@ -46,16 +46,63 @@ export interface MasterItem {
   updatedAt?: string;
 }
 
-const DEFAULT_TRAINING_ITEMS = [
-  'APS -4 Day',
-  'APS Refresher',
-  'TPM',
-  'SPC',
-  'PFEMA',
-  'EMS',
-  'Product Process Knowledge',
-  'Sales',
-  'Others',
+export interface DefaultTrainingItem {
+  title: string;
+  category: string;
+}
+
+const DEFAULT_TRAINING_ITEMS: DefaultTrainingItem[] = [
+  // 1. Generic Training Programme
+  { title: 'Advance Product Knowledge', category: 'Generic Training Programme' },
+  { title: 'NC Handling', category: 'Generic Training Programme' },
+  { title: 'BBS', category: 'Generic Training Programme' },
+  { title: 'SPC', category: 'Generic Training Programme' },
+  { title: '7QC Tools', category: 'Generic Training Programme' },
+  { title: 'Poka-Yoka', category: 'Generic Training Programme' },
+  { title: 'Control Plan', category: 'Generic Training Programme' },
+  { title: '8D Analysis', category: 'Generic Training Programme' },
+  { title: 'MSA', category: 'Generic Training Programme' },
+  { title: 'Awareness of Process', category: 'Generic Training Programme' },
+  { title: 'Metrology', category: 'Generic Training Programme' },
+  { title: 'AM', category: 'Generic Training Programme' },
+  { title: 'PFMEA', category: 'Generic Training Programme' },
+  { title: 'Production MIS', category: 'Generic Training Programme' },
+  { title: 'Good Communication Skill', category: 'Generic Training Programme' },
+  { title: 'SAP Knowledge', category: 'Generic Training Programme' },
+  { title: 'Soft Skill / BBQ Training', category: 'Generic Training Programme' },
+
+  // 2. Mandatory Training Plan
+  { title: 'Induction', category: 'Mandatory Training Plan' },
+  { title: 'CST(Creative Skill Training)', category: 'Mandatory Training Plan' },
+  { title: 'ASTEr(Advanced Skill Training for Engineers)', category: 'Mandatory Training Plan' },
+  { title: 'DISHA', category: 'Mandatory Training Plan' },
+
+  // 3. STOE Training Programs
+  { title: 'Safety', category: 'STOE Training Programs' },
+  { title: 'Quality', category: 'STOE Training Programs' },
+  { title: 'SCM', category: 'STOE Training Programs' },
+  { title: 'Design', category: 'STOE Training Programs' },
+  { title: 'Production', category: 'STOE Training Programs' },
+  { title: 'Maintenance', category: 'STOE Training Programs' },
+  { title: 'After Market', category: 'STOE Training Programs' },
+  { title: 'Tooling', category: 'STOE Training Programs' },
+  { title: 'PTT', category: 'STOE Training Programs' },
+
+  // 4. Process Mastery Certification Programs
+  { title: 'Water Leak Testing', category: 'Process Mastery Certification Programs' },
+  { title: 'ALT -Oil Filter', category: 'Process Mastery Certification Programs' },
+  { title: 'Vibration Welding', category: 'Process Mastery Certification Programs' },
+  { title: 'ALT-Air Filter/EP', category: 'Process Mastery Certification Programs' },
+  { title: 'Seaming', category: 'Process Mastery Certification Programs' },
+  { title: 'Clipping', category: 'Process Mastery Certification Programs' },
+  { title: 'Paper Pleating', category: 'Process Mastery Certification Programs' },
+  { title: 'Heat Nut', category: 'Process Mastery Certification Programs' },
+  { title: 'Dispencing & Dipping', category: 'Process Mastery Certification Programs' },
+  { title: 'Injection Moulding', category: 'Process Mastery Certification Programs' },
+  { title: 'PU - Dosing', category: 'Process Mastery Certification Programs' },
+  { title: 'Coilling', category: 'Process Mastery Certification Programs' },
+  { title: 'Stamping', category: 'Process Mastery Certification Programs' },
+  { title: 'Ultrasonic', category: 'Process Mastery Certification Programs' },
 ];
 
 const DEFAULT_ACTIVITY_ITEMS = [
@@ -1525,19 +1572,27 @@ const store = {
             CONSTRAINT [MasterItem_pkey] PRIMARY KEY CLUSTERED ([id])
           );
         END
+        ELSE
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[MasterItem]') AND name = 'category')
+          BEGIN
+            ALTER TABLE [dbo].[MasterItem] ADD [category] NVARCHAR(100) NULL;
+          END
+        END
       `);
 
       const trCount = await pool.request().query("SELECT COUNT(*) AS cnt FROM [MasterItem] WHERE [type] = 'training'");
       if ((trCount.recordset[0]?.cnt || 0) === 0) {
         for (let i = 0; i < DEFAULT_TRAINING_ITEMS.length; i++) {
-          const title = DEFAULT_TRAINING_ITEMS[i];
+          const item = DEFAULT_TRAINING_ITEMS[i];
           await pool.request()
             .input('type', sql.NVarChar, 'training')
-            .input('title', sql.NVarChar, title)
+            .input('title', sql.NVarChar, item.title)
+            .input('category', sql.NVarChar, item.category)
             .input('sortOrder', sql.Int, i + 1)
             .query(`
-              INSERT INTO [MasterItem] (id, type, title, sortOrder, isActive, createdAt, updatedAt)
-              VALUES (CAST(NEWID() AS NVARCHAR(1000)), @type, @title, @sortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME())
+              INSERT INTO [MasterItem] (id, type, title, category, sortOrder, isActive, createdAt, updatedAt)
+              VALUES (CAST(NEWID() AS NVARCHAR(1000)), @type, @title, @category, @sortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME())
             `);
         }
       }
@@ -1576,13 +1631,13 @@ const store = {
       const activities = res.recordset.filter((r: any) => r.type === 'activity');
 
       return {
-        trainings: trainings.length ? trainings : DEFAULT_TRAINING_ITEMS.map((t, i) => ({ id: `default-tr-${i}`, type: 'training', title: t, sortOrder: i + 1 })),
+        trainings: trainings.length ? trainings : DEFAULT_TRAINING_ITEMS.map((t, i) => ({ id: `default-tr-${i}`, type: 'training', title: t.title, category: t.category, sortOrder: i + 1 })),
         activities: activities.length ? activities : DEFAULT_ACTIVITY_ITEMS.map((a, i) => ({ id: `default-ac-${i}`, type: 'activity', title: a, sortOrder: i + 1 })),
       };
     } catch (err) {
       console.warn('Fallback in listMasterItems:', err);
       return {
-        trainings: DEFAULT_TRAINING_ITEMS.map((t, i) => ({ id: `default-tr-${i}`, type: 'training', title: t, sortOrder: i + 1 })),
+        trainings: DEFAULT_TRAINING_ITEMS.map((t, i) => ({ id: `default-tr-${i}`, type: 'training', title: t.title, category: t.category, sortOrder: i + 1 })),
         activities: DEFAULT_ACTIVITY_ITEMS.map((a, i) => ({ id: `default-ac-${i}`, type: 'activity', title: a, sortOrder: i + 1 })),
       };
     }
@@ -1593,20 +1648,23 @@ const store = {
     const cleanTitle = String(title).trim();
     if (!cleanTitle) throw new Error('Title cannot be empty.');
 
+    const cleanCategory = type === 'training' ? (category ? String(category).trim() : 'Others') : null;
+
     const pool = await getPool();
 
     const existing = await pool.request()
       .input('type', sql.NVarChar, type)
       .input('title', sql.NVarChar, cleanTitle)
-      .query('SELECT TOP 1 id, isActive FROM [MasterItem] WHERE type = @type AND title = @title');
+      .query('SELECT TOP 1 id, isActive, category FROM [MasterItem] WHERE type = @type AND title = @title');
 
     if (existing.recordset.length > 0) {
       const row = existing.recordset[0];
-      if (!row.isActive) {
+      if (!row.isActive || (cleanCategory && row.category !== cleanCategory)) {
         await pool.request()
           .input('id', sql.NVarChar, row.id)
-          .query('UPDATE [MasterItem] SET isActive = 1, updatedAt = SYSUTCDATETIME() WHERE id = @id');
-        return { ok: true, action: 'reactivated', id: row.id, title: cleanTitle, type };
+          .input('category', sql.NVarChar, cleanCategory || row.category || 'Others')
+          .query('UPDATE [MasterItem] SET isActive = 1, category = @category, updatedAt = SYSUTCDATETIME() WHERE id = @id');
+        return { ok: true, action: 'updated', id: row.id, title: cleanTitle, category: cleanCategory || row.category, type };
       }
       throw new Error(`"${cleanTitle}" already exists in ${type === 'training' ? 'Training Matrix' : 'Activities'}.`);
     }
@@ -1619,7 +1677,7 @@ const store = {
     const insertRes = await pool.request()
       .input('type', sql.NVarChar, type)
       .input('title', sql.NVarChar, cleanTitle)
-      .input('category', sql.NVarChar, category || null)
+      .input('category', sql.NVarChar, cleanCategory)
       .input('sortOrder', sql.Int, nextSort)
       .query(`
         DECLARE @newId NVARCHAR(1000) = CAST(NEWID() AS NVARCHAR(1000));
@@ -1635,6 +1693,7 @@ const store = {
       id: insertRes.recordset[0].id,
       type,
       title: cleanTitle,
+      category: cleanCategory,
       sortOrder: nextSort,
     };
   },

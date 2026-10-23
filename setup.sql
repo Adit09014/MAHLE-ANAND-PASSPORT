@@ -341,13 +341,59 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[AssessmentCycle] WHERE [month] = '2026-11')
     VALUES (CAST(NEWID() AS NVARCHAR(1000)), '2026-11', 'November 2026 Assessment Cycle', 'open', '2026-11-01', '2026-11-30');
 
 -- 5.5 Master Catalog: Standard Training Matrix Programs (Sheet 05)
-DECLARE @trainings TABLE (title NVARCHAR(500), sortOrder INT);
+DECLARE @trainings TABLE (title NVARCHAR(500), category NVARCHAR(100), sortOrder INT);
 INSERT INTO @trainings VALUES 
-('APS -4 Day', 1), ('APS Refresher', 2), ('TPM', 3), ('SPC', 4),
-('PFEMA', 5), ('EMS', 6), ('Product Process Knowledge', 7), ('Sales', 8), ('Others', 9);
+-- 1. Generic Training Programme
+('Advance Product Knowledge', 'Generic Training Programme', 1),
+('NC Handling', 'Generic Training Programme', 2),
+('BBS', 'Generic Training Programme', 3),
+('SPC', 'Generic Training Programme', 4),
+('7QC Tools', 'Generic Training Programme', 5),
+('Poka-Yoka', 'Generic Training Programme', 6),
+('Control Plan', 'Generic Training Programme', 7),
+('8D Analysis', 'Generic Training Programme', 8),
+('MSA', 'Generic Training Programme', 9),
+('Awareness of Process', 'Generic Training Programme', 10),
+('Metrology', 'Generic Training Programme', 11),
+('AM', 'Generic Training Programme', 12),
+('PFMEA', 'Generic Training Programme', 13),
+('Production MIS', 'Generic Training Programme', 14),
+('Good Communication Skill', 'Generic Training Programme', 15),
+('SAP Knowledge', 'Generic Training Programme', 16),
+('Soft Skill / BBQ Training', 'Generic Training Programme', 17),
+-- 2. Mandatory Training Plan
+('Induction', 'Mandatory Training Plan', 18),
+('CST(Creative Skill Training)', 'Mandatory Training Plan', 19),
+('ASTEr(Advanced Skill Training for Engineers)', 'Mandatory Training Plan', 20),
+('DISHA', 'Mandatory Training Plan', 21),
+-- 3. STOE Training Programs
+('Safety', 'STOE Training Programs', 22),
+('Quality', 'STOE Training Programs', 23),
+('SCM', 'STOE Training Programs', 24),
+('Design', 'STOE Training Programs', 25),
+('Production', 'STOE Training Programs', 26),
+('Maintenance', 'STOE Training Programs', 27),
+('After Market', 'STOE Training Programs', 28),
+('Tooling', 'STOE Training Programs', 29),
+('PTT', 'STOE Training Programs', 30),
+-- 4. Process Mastery Certification Programs
+('Water Leak Testing', 'Process Mastery Certification Programs', 31),
+('ALT -Oil Filter', 'Process Mastery Certification Programs', 32),
+('Vibration Welding', 'Process Mastery Certification Programs', 33),
+('ALT-Air Filter/EP', 'Process Mastery Certification Programs', 34),
+('Seaming', 'Process Mastery Certification Programs', 35),
+('Clipping', 'Process Mastery Certification Programs', 36),
+('Paper Pleating', 'Process Mastery Certification Programs', 37),
+('Heat Nut', 'Process Mastery Certification Programs', 38),
+('Dispencing & Dipping', 'Process Mastery Certification Programs', 39),
+('Injection Moulding', 'Process Mastery Certification Programs', 40),
+('PU - Dosing', 'Process Mastery Certification Programs', 41),
+('Coilling', 'Process Mastery Certification Programs', 42),
+('Stamping', 'Process Mastery Certification Programs', 43),
+('Ultrasonic', 'Process Mastery Certification Programs', 44);
 
-INSERT INTO [dbo].[MasterItem] ([id], [type], [title], [sortOrder], [isActive])
-SELECT CAST(NEWID() AS NVARCHAR(1000)), 'training', t.title, t.sortOrder, 1
+INSERT INTO [dbo].[MasterItem] ([id], [type], [title], [category], [sortOrder], [isActive])
+SELECT CAST(NEWID() AS NVARCHAR(1000)), 'training', t.title, t.category, t.sortOrder, 1
 FROM @trainings t
 WHERE NOT EXISTS (SELECT 1 FROM [dbo].[MasterItem] WHERE [type] = 'training' AND [title] = t.title);
 

@@ -36,10 +36,9 @@ export async function POST(req: Request) {
     }
 
     const exact = session.exactRole || session.role;
-    const isSuperOrHr = exact === 'Super Admin' || exact === 'HR Head';
-    if (!isSuperOrHr) {
+    if (exact !== 'Super Admin') {
       return NextResponse.json(
-        { error: 'Forbidden. Only Super Admin and HR Head can modify Training Matrix and Activities catalogs.' },
+        { error: 'Forbidden. Only Super Admin can modify Training Matrix and Activities catalogs.' },
         { status: 403 }
       );
     }

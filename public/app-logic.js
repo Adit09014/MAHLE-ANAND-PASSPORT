@@ -287,7 +287,7 @@ function setTopbarWho(role, id, name, unitName, exactRole) {
 
   const manageUnitsBtn = document.getElementById('topbarManageUnitsBtn');
   const unitBarEditBtn = document.getElementById('unitBarEditBtn');
-  const isSuper = (exactRole === 'Super Admin' || exactRole === 'HR Head');
+  const isSuper = (exactRole === 'Super Admin');
   if (manageUnitsBtn) manageUnitsBtn.style.display = isSuper ? 'inline-flex' : 'none';
   if (unitBarEditBtn) unitBarEditBtn.style.display = isSuper ? 'inline-flex' : 'none';
 }
@@ -436,6 +436,32 @@ async function updateActiveEmployeeInfo(empId, optName, optUnit) {
 async function selectEmployee(empId, optName, optUnit, targetSheet = null) {
   viewingEmpId = empId;
   await updateActiveEmployeeInfo(empId, optName, optUnit);
+
+  const role = activeEmployeeInfo?.role;
+  const isAdminRole = role === 'Super Admin' || role === 'HR Head' || role === 'Unit Admin';
+  const isSupervisorRole = role === 'Team Leader (TL)' || role === 'Senior Group Leader (SGL)' || role === 'Team Leader' || role === 'Senior Group Leader';
+
+  if (isAdminRole) {
+    viewingEmpId = null;
+    activeEmployeeInfo = null;
+    showToast('Administrative accounts (Super Admin / HR Head / Unit Admin) do not have a Growth Passport.');
+    return;
+  }
+
+  if (isSupervisorRole) {
+    viewingEmpId = null;
+    activeEmployeeInfo = null;
+    const isSuperOrHr = currentExactRole === 'Super Admin' || currentExactRole === 'HR Head';
+    const isUnitAdmin = currentExactRole === 'Unit Admin';
+    if (isSuperOrHr || isUnitAdmin) {
+      await openSupervisorInsightsModal(empId, optName, role, optUnit);
+      return;
+    } else {
+      showToast('Supervisors (TL / SGL) do not maintain individual growth passports.');
+      return;
+    }
+  }
+
   renderSidebar();
   updateEmployeeNavBar();
   if (targetSheet) {
@@ -883,8 +909,11 @@ async function renderHome() {
   if (currentExactRole === 'Super Admin' || currentExactRole === 'HR Head') {
     document.getElementById('homeLead').textContent = 'Centralized multi-unit assessment analytics and performance tracking across all 4 State Units.';
     if (adminView) adminView.classList.remove('hidden');
+    const isSuperOnly = (currentExactRole === 'Super Admin');
     const unitBarEditBtn = document.getElementById('unitBarEditBtn');
-    if (unitBarEditBtn) unitBarEditBtn.style.display = 'inline-flex';
+    if (unitBarEditBtn) unitBarEditBtn.style.display = isSuperOnly ? 'inline-flex' : 'none';
+    const masterCatalogBtn = document.getElementById('adminMasterCatalogBtn');
+    if (masterCatalogBtn) masterCatalogBtn.style.display = isSuperOnly ? 'inline-flex' : 'none';
     await renderUnitFilterPills();
     await renderAdminDashboard(selectedUnitFilter || 'all');
   } else if (currentExactRole === 'Unit Admin') {
@@ -1265,24 +1294,51 @@ async function renderUnitAdminView(month = getGlobalCycle()) {
       const scoreVal = (emp.tlScore !== null && emp.tlScore !== undefined) ? emp.tlScore : emp.score;
       const isEval = !!scoreVal;
       const isSub = emp.submissionStatus === 'submitted' || emp.submissionStatus === 'Submitted';
+      const roleStr = emp.roleName || emp.role || 'Employee';
+      const isAdminRole = roleStr === 'Unit Admin' || roleStr === 'Super Admin' || roleStr === 'HR Head';
+      const isSupervisor = roleStr === 'Team Leader (TL)' || roleStr === 'Senior Group Leader (SGL)' || roleStr === 'Team Leader' || roleStr === 'Senior Group Leader';
+
+      let statusBadgeHtml = '';
+      let scoreHtml = '—';
+      let actionButtonsHtml = '';
+
+      if (isAdminRole) {
+        statusBadgeHtml = `<span class="badge" style="background:#e0e7ff;color:#3730a3;font-weight:700;">Admin Role</span>`;
+        scoreHtml = `<span style="font-size:12px;color:var(--ink-dim);">—</span>`;
+        actionButtonsHtml = `
+          <button class="btn btn-sm btn-ghost btn-ua-edit" data-emp="${esc(emp.empCode)}" title="Edit user profile & supervisor mapping">Edit / Map</button>
+        `;
+      } else if (isSupervisor) {
+        statusBadgeHtml = `<span class="badge" style="background:#f0fdf4;color:#166534;font-weight:700;">Supervisor</span>`;
+        scoreHtml = `<span style="font-size:12px;color:var(--ink-dim);">Oversight</span>`;
+        actionButtonsHtml = `
+          <button class="btn btn-sm btn-ghost btn-ua-insights" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" data-role="${esc(roleStr)}" style="color:var(--mahle-blue);font-weight:700;" title="View Supervisor Insights, Comments & Attached Team">📊 Insights & Team</button>
+          <button class="btn btn-sm btn-ghost btn-ua-edit" data-emp="${esc(emp.empCode)}" title="Edit user profile & supervisor mapping">Edit / Map</button>
+        `;
+      } else {
+        statusBadgeHtml = `<span class="badge ${isEval ? 'badge-evaluated' : (isSub ? 'badge-evaluated' : 'badge-pending')}" style="${!isEval && isSub ? 'background:#e8f0fe;color:#1a73e8;' : ''}">
+          ${isEval ? 'Evaluated' : (isSub ? 'Submitted' : 'Pending')}
+        </span>`;
+        scoreHtml = isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '—';
+        actionButtonsHtml = `
+          <button class="btn btn-sm btn-ghost btn-ua-view" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" title="Open Growth Passport">View Record</button>
+          <button class="btn btn-sm btn-ghost btn-ua-edit" data-emp="${esc(emp.empCode)}" title="Edit user profile & supervisor mapping">Edit / Map</button>
+        `;
+      }
+
       tr.innerHTML = `
         <td style="font-family:var(--font-mono);font-weight:700;">${esc(emp.empCode)}</td>
         <td style="font-weight:600;">${esc(emp.name)}</td>
-        <td><span style="font-size:12.5px;font-weight:600;">${esc(emp.roleName || emp.role)}</span></td>
+        <td><span style="font-size:12.5px;font-weight:600;">${esc(roleStr)}</span></td>
         <td style="font-size:12px;line-height:1.4;">
           <div><strong>TL:</strong> ${esc(emp.tlName || 'Unassigned')}</div>
           ${emp.sglName ? `<div style="color:var(--ink-dim);font-size:11px;"><strong>SGL:</strong> ${esc(emp.sglName)}</div>` : ''}
         </td>
-        <td>
-          <span class="badge ${isEval ? 'badge-evaluated' : (isSub ? 'badge-evaluated' : 'badge-pending')}" style="${!isEval && isSub ? 'background:#e8f0fe;color:#1a73e8;' : ''}">
-            ${isEval ? 'Evaluated' : (isSub ? 'Submitted' : 'Pending')}
-          </span>
-        </td>
-        <td style="font-weight:700;font-family:var(--font-mono);">${isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '—'}</td>
+        <td>${statusBadgeHtml}</td>
+        <td style="font-weight:700;font-family:var(--font-mono);">${scoreHtml}</td>
         <td>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <button class="btn btn-sm btn-ghost btn-ua-view" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}">View Record</button>
-            <button class="btn btn-sm btn-ghost btn-ua-edit" data-emp="${esc(emp.empCode)}" title="Edit user profile & supervisor mapping">Edit / Map</button>
+            ${actionButtonsHtml}
           </div>
         </td>
       `;
@@ -1292,6 +1348,12 @@ async function renderUnitAdminView(month = getGlobalCycle()) {
     tbody.querySelectorAll('.btn-ua-view').forEach(btn => {
       btn.addEventListener('click', async () => {
         await selectEmployee(btn.dataset.emp, btn.dataset.name);
+      });
+    });
+
+    tbody.querySelectorAll('.btn-ua-insights').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await openSupervisorInsightsModal(btn.dataset.emp, btn.dataset.name, btn.dataset.role, currentUnitName);
       });
     });
 
@@ -2571,7 +2633,7 @@ async function renderDirectory(month = getGlobalCycle()) {
 
   const isSuperOrHr = currentExactRole === 'Super Admin' || currentExactRole === 'HR Head';
   const isUnitAdmin = currentExactRole === 'Unit Admin';
-  const canAdd = isSuperOrHr || isUnitAdmin;
+  const canAdd = (currentExactRole === 'Super Admin');
   const canExport = isSuperOrHr || isUnitAdmin;
 
   const btnDirAddUser = document.getElementById('btnDirAddUser');
@@ -2637,12 +2699,65 @@ async function renderAdminStaffView(month = getGlobalCycle()) {
       const scoreVal = (emp.tlScore !== null && emp.tlScore !== undefined) ? emp.tlScore : emp.score;
       const isEval = !!scoreVal;
       const isActive = emp.isActive !== false && emp.isActive !== 0;
+      const roleStr = emp.exactRole || emp.roleName || emp.role || 'Employee';
+      const isAdminRole = roleStr === 'Super Admin' || roleStr === 'HR Head' || roleStr === 'Unit Admin';
+      const isSupervisor = roleStr === 'Team Leader (TL)' || roleStr === 'Senior Group Leader (SGL)' || roleStr === 'Team Leader' || roleStr === 'Senior Group Leader';
+
+      const isSuperAdminUser = (currentExactRole === 'Super Admin');
+      const isTargetSuperAdmin = (roleStr === 'Super Admin');
+
+      let statusBadgeHtml = '';
+      let scoreHtml = '—';
+      let actionButtonsHtml = '';
+
+      if (isAdminRole) {
+        statusBadgeHtml = `<span class="badge" style="background:#e0e7ff;color:#3730a3;font-weight:700;">Admin Role</span>`;
+        scoreHtml = `<span style="font-size:12px;color:var(--ink-dim);">—</span>`;
+        if (isSuperAdminUser) {
+          actionButtonsHtml = `
+            <button class="btn btn-sm btn-ghost btn-admin-edit" data-emp="${esc(emp.empCode)}" title="Edit User">Edit</button>
+            ${!isTargetSuperAdmin ? `
+              <button class="btn btn-sm ${isActive ? 'btn-ghost' : 'btn-primary'} btn-admin-toggle-active" data-emp="${esc(emp.empCode)}" data-active="${isActive ? '1' : '0'}" title="${isActive ? 'Deactivate Account' : 'Activate Account'}">
+                ${isActive ? 'Deactivate' : 'Activate'}
+              </button>
+            ` : ''}
+          `;
+        } else {
+          actionButtonsHtml = `<span style="font-size:12px;color:var(--ink-dim);">Audit Only</span>`;
+        }
+      } else if (isSupervisor) {
+        statusBadgeHtml = `<span class="badge" style="background:#f0fdf4;color:#166534;font-weight:700;">Supervisor</span>`;
+        scoreHtml = `<span style="font-size:12px;color:var(--ink-dim);">Oversight</span>`;
+        actionButtonsHtml = `
+          <button class="btn btn-sm btn-ghost btn-admin-insights" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" data-role="${esc(roleStr)}" data-unit="${esc(emp.unitName || '')}" style="color:var(--mahle-blue);font-weight:700;" title="View Supervisor Insights, Comments & Attached Team">📊 Insights & Team</button>
+          ${isSuperAdminUser ? `
+            <button class="btn btn-sm btn-ghost btn-admin-edit" data-emp="${esc(emp.empCode)}" title="Edit User & Roles">Edit</button>
+            <button class="btn btn-sm ${isActive ? 'btn-ghost' : 'btn-primary'} btn-admin-toggle-active" data-emp="${esc(emp.empCode)}" data-active="${isActive ? '1' : '0'}" title="${isActive ? 'Deactivate Account' : 'Activate Account'}">
+              ${isActive ? 'Deactivate' : 'Activate'}
+            </button>
+          ` : ''}
+        `;
+      } else {
+        statusBadgeHtml = `<span class="badge ${isEval ? 'badge-evaluated' : (emp.submittedAt ? 'badge-evaluated' : 'badge-pending')}" style="${!isEval && emp.submittedAt ? 'background:#e8f0fe;color:#1a73e8;' : ''}">
+          ${isEval ? 'Evaluated' : (emp.submittedAt ? 'Submitted' : 'Pending')}
+        </span>`;
+        scoreHtml = isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '—';
+        actionButtonsHtml = `
+          <button class="btn btn-sm btn-ghost btn-admin-view" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" data-unit="${esc(emp.unitName || '')}" title="Open Growth Passport">View Record</button>
+          ${isSuperAdminUser ? `
+            <button class="btn btn-sm btn-ghost btn-admin-edit" data-emp="${esc(emp.empCode)}" title="Edit User & Roles">Edit</button>
+            <button class="btn btn-sm ${isActive ? 'btn-ghost' : 'btn-primary'} btn-admin-toggle-active" data-emp="${esc(emp.empCode)}" data-active="${isActive ? '1' : '0'}" title="${isActive ? 'Deactivate Account' : 'Activate Account'}">
+              ${isActive ? 'Deactivate' : 'Activate'}
+            </button>
+          ` : ''}
+        `;
+      }
 
       tr.innerHTML = `
         <td style="font-family:var(--font-mono);font-weight:700;">${esc(emp.empCode)}</td>
         <td style="font-weight:600;">${esc(emp.name)}</td>
         <td><span class="who-unit">${esc(emp.unitName || 'Plant')}</span></td>
-        <td><span style="font-size:12.5px;font-weight:600;">${esc(emp.exactRole || emp.roleName || emp.role)}</span></td>
+        <td><span style="font-size:12.5px;font-weight:600;">${esc(roleStr)}</span></td>
         <td style="font-size:12px;color:var(--ink-dim);line-height:1.4;">
           ${emp.teamLeaderName ? `<div><strong>TL:</strong> ${esc(emp.teamLeaderName)}</div>` : ''}
           ${emp.seniorGroupLeaderName ? `<div><strong>SGL:</strong> ${esc(emp.seniorGroupLeaderName)}</div>` : (!emp.teamLeaderName ? '—' : '')}
@@ -2652,19 +2767,11 @@ async function renderAdminStaffView(month = getGlobalCycle()) {
             ${isActive ? 'Active' : 'Deactivated'}
           </span>
         </td>
-        <td>
-          <span class="badge ${isEval ? 'badge-evaluated' : (emp.submittedAt ? 'badge-evaluated' : 'badge-pending')}" style="${!isEval && emp.submittedAt ? 'background:#e8f0fe;color:#1a73e8;' : ''}">
-            ${isEval ? 'Evaluated' : (emp.submittedAt ? 'Submitted' : 'Pending')}
-          </span>
-        </td>
-        <td style="font-weight:700;font-family:var(--font-mono);">${isEval ? Number(scoreVal).toFixed(1) + ' / 10' : '—'}</td>
+        <td>${statusBadgeHtml}</td>
+        <td style="font-weight:700;font-family:var(--font-mono);">${scoreHtml}</td>
         <td>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <button class="btn btn-sm btn-ghost btn-admin-view" data-emp="${esc(emp.empCode)}" data-name="${esc(emp.name)}" data-unit="${esc(emp.unitName || '')}" title="Open Passport">View Record</button>
-            <button class="btn btn-sm btn-ghost btn-admin-edit" data-emp="${esc(emp.empCode)}" title="Edit User & Roles">Edit</button>
-            <button class="btn btn-sm ${isActive ? 'btn-ghost' : 'btn-primary'} btn-admin-toggle-active" data-emp="${esc(emp.empCode)}" data-active="${isActive ? '1' : '0'}" title="${isActive ? 'Deactivate Account' : 'Activate Account'}">
-              ${isActive ? 'Deactivate' : 'Activate'}
-            </button>
+            ${actionButtonsHtml}
           </div>
         </td>
       `;
@@ -2674,6 +2781,12 @@ async function renderAdminStaffView(month = getGlobalCycle()) {
     tbody.querySelectorAll('.btn-admin-view').forEach(btn => {
       btn.addEventListener('click', async () => {
         await selectEmployee(btn.dataset.emp, btn.dataset.name, btn.dataset.unit);
+      });
+    });
+
+    tbody.querySelectorAll('.btn-admin-insights').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await openSupervisorInsightsModal(btn.dataset.emp, btn.dataset.name, btn.dataset.role, btn.dataset.unit);
       });
     });
 
@@ -2697,6 +2810,11 @@ async function renderAdminStaffView(month = getGlobalCycle()) {
 }
 
 async function openUserMgmtModal(userToEdit = null) {
+  if (currentExactRole !== 'Super Admin' && currentExactRole !== 'Unit Admin') {
+    showToast('User accounts and roles can only be edited by Super Admin.');
+    return;
+  }
+
   await loadAdminMetadata();
 
   const modal = document.getElementById('userMgmtModal');
@@ -2730,13 +2848,21 @@ async function openUserMgmtModal(userToEdit = null) {
   }
 
   if (userToEdit) {
+    const isTargetSuperAdmin = (userToEdit.exactRole === 'Super Admin' || userToEdit.roleName === 'Super Admin' || userToEdit.role === 'Super Admin');
     title.textContent = `Edit User: ${userToEdit.name} (${userToEdit.empCode})`;
-    sub.textContent = 'Modify personnel role, plant assignment, supervisors, and account state.';
+    sub.textContent = isTargetSuperAdmin 
+      ? 'Super Admin Account · Role and activation permissions are permanently protected.'
+      : 'Modify personnel role, plant assignment, supervisors, and account state.';
     empCodeInput.value = userToEdit.empCode;
     empCodeInput.disabled = true;
     nameInput.value = userToEdit.name || '';
     roleSelect.value = userToEdit.exactRole === 'Shop Floor Employee' ? 'Employee' : (userToEdit.exactRole || userToEdit.roleName || userToEdit.role || 'Employee');
+    
+    // Super Admin role cannot be changed; Unit Admin cannot change roles
+    roleSelect.disabled = isTargetSuperAdmin || (currentExactRole === 'Unit Admin');
+
     unitSelect.value = userToEdit.unitId || '';
+    unitSelect.disabled = (currentExactRole === 'Unit Admin');
     deptInput.value = userToEdit.department || userToEdit.departmentName || 'Operations';
     tlSelect.value = userToEdit.tlId || userToEdit.teamLeaderId || '';
     sglSelect.value = userToEdit.sglId || userToEdit.seniorGroupLeaderId || '';
@@ -2744,6 +2870,7 @@ async function openUserMgmtModal(userToEdit = null) {
     pwNote.textContent = 'Leave blank to preserve existing password.';
     activeCheckbox.checked = userToEdit.isActive !== false && userToEdit.isActive !== 0;
     activeLabel.textContent = activeCheckbox.checked ? 'Active & Permitted' : 'Deactivated / Login Blocked';
+    activeCheckbox.disabled = isTargetSuperAdmin; // Super Admin cannot be deactivated
 
     if (joiningDateInput) joiningDateInput.value = userToEdit.joiningDate || '';
     if (dobInput) dobInput.value = userToEdit.dob || '';
@@ -2760,6 +2887,7 @@ async function openUserMgmtModal(userToEdit = null) {
     empCodeInput.disabled = false;
     nameInput.value = '';
     roleSelect.value = 'Employee';
+    roleSelect.disabled = false;
     if (currentExactRole === 'Unit Admin' && (currentUser?.unitId || currentUser?.unitName)) {
       if (currentUser?.unitId) unitSelect.value = currentUser.unitId;
       unitSelect.disabled = true;
@@ -2773,6 +2901,7 @@ async function openUserMgmtModal(userToEdit = null) {
     pwInput.value = '';
     pwNote.textContent = 'Default passcode if left blank: Mahle@123';
     activeCheckbox.checked = true;
+    activeCheckbox.disabled = false;
     activeLabel.textContent = 'Active & Permitted';
 
     if (joiningDateInput) joiningDateInput.value = '';
@@ -2794,6 +2923,10 @@ async function openUserMgmtModal(userToEdit = null) {
 }
 
 async function saveUserAccount() {
+  if (currentExactRole !== 'Super Admin' && currentExactRole !== 'Unit Admin') {
+    showToast('Only Super Admin is authorized to create or edit accounts.');
+    return;
+  }
   const errEl = document.getElementById('userMgmtError');
   const empCode = (document.getElementById('userMgmtEmpCode')?.value || '').trim().toUpperCase();
   const name = (document.getElementById('userMgmtName')?.value || '').trim();
@@ -2882,6 +3015,10 @@ async function saveUserAccount() {
 }
 
 async function toggleUserActive(empCode, currentlyActive) {
+  if (currentExactRole !== 'Super Admin') {
+    showToast('Only Super Admin can activate or deactivate accounts.');
+    return;
+  }
   try {
     const res = await api('/api/admin/users', {
       method: 'PATCH',
@@ -2897,8 +3034,8 @@ async function toggleUserActive(empCode, currentlyActive) {
 
 // Assessment Cycle Management
 async function openCycleMgmtModal() {
-  if (currentExactRole !== 'Super Admin' && currentExactRole !== 'HR Head') {
-    showToast('Assessment Cycles can only be configured by Super Admin and HR Head.');
+  if (currentExactRole !== 'Super Admin') {
+    showToast('Assessment Cycles can only be configured by Super Admin.');
     return;
   }
 
@@ -3139,6 +3276,11 @@ document.getElementById('btnSaveCycle')?.addEventListener('click', saveAssessmen
 let currentUnitsList = [];
 
 async function openUnitMgmtModal() {
+  if (currentExactRole !== 'Super Admin') {
+    showToast('Plant units can only be modified by Super Admin.');
+    return;
+  }
+
   const modal = document.getElementById('unitMgmtModal');
   const listEl = document.getElementById('unitMgmtList');
   const errEl = document.getElementById('unitEditError');
@@ -3265,15 +3407,398 @@ document.getElementById('unitMgmtCloseX')?.addEventListener('click', () => docum
 document.getElementById('unitEditCancelBtn')?.addEventListener('click', () => document.getElementById('unitMgmtModal')?.classList.add('hidden'));
 document.getElementById('unitEditSaveBtn')?.addEventListener('click', saveUnitEdit);
 
+/* ============================= SUPERVISOR INSIGHTS & ATTACHED WORKFORCE DOSSIER ============================= */
+let currentSupervisorInsightsData = null;
+
+async function openSupervisorInsightsModal(empCode, optName, optRole, optUnit, optMonth = getGlobalCycle()) {
+  const modal = document.getElementById('supervisorInsightsModal');
+  if (!modal) return;
+
+  // Reset modal state
+  const nameEl = document.getElementById('siName');
+  const codeEl = document.getElementById('siCode');
+  const roleEl = document.getElementById('siRoleBadge');
+  const unitEl = document.getElementById('siUnitBadge');
+  const deptEl = document.getElementById('siDept');
+  const hierEl = document.getElementById('siHierarchyMeta');
+  const cycleEl = document.getElementById('siCycleBadge');
+  const avatarEl = document.getElementById('siAvatar');
+
+  if (nameEl) nameEl.textContent = optName || empCode;
+  if (codeEl) codeEl.textContent = empCode;
+  if (roleEl) roleEl.textContent = optRole || 'Supervisor';
+  if (unitEl) unitEl.textContent = optUnit || 'Plant Unit';
+  if (deptEl) deptEl.textContent = 'Loading…';
+  if (hierEl) hierEl.textContent = '';
+  if (cycleEl) cycleEl.textContent = getCycleLabel(optMonth);
+  if (avatarEl) avatarEl.textContent = (optRole && optRole.includes('SGL')) ? 'SGL' : 'TL';
+
+  // Stats placeholders
+  const kpiAtt = document.getElementById('siKpiAttached');
+  const kpiSub = document.getElementById('siKpiSubmitted');
+  const kpiSubRate = document.getElementById('siKpiSubRate');
+  const kpiEval = document.getElementById('siKpiEvaluated');
+  const kpiEvalRate = document.getElementById('siKpiEvalRate');
+  const kpiPend = document.getElementById('siKpiPending');
+  const kpiAvg = document.getElementById('siKpiAvgScore');
+
+  if (kpiAtt) kpiAtt.textContent = '…';
+  if (kpiSub) kpiSub.textContent = '…';
+  if (kpiSubRate) kpiSubRate.textContent = 'Loading…';
+  if (kpiEval) kpiEval.textContent = '…';
+  if (kpiEvalRate) kpiEvalRate.textContent = 'Loading…';
+  if (kpiPend) kpiPend.textContent = '…';
+  if (kpiAvg) kpiAvg.textContent = '…';
+
+  const tBody = document.getElementById('siTeamTableBody');
+  const feed = document.getElementById('siCommentsFeed');
+  if (tBody) tBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:24px;">Loading attached workforce…</td></tr>';
+  if (feed) feed.innerHTML = '<div style="text-align:center;color:var(--ink-dim);padding:24px;">Loading evaluation remarks & comments…</div>';
+
+  modal.classList.remove('hidden');
+  switchSupervisorInsightsTab('team');
+
+  try {
+    const res = await api(`/api/admin/supervisor-insights?empCode=${encodeURIComponent(empCode)}&month=${encodeURIComponent(optMonth)}`);
+    currentSupervisorInsightsData = res;
+
+    const sup = res.supervisor || {};
+    const stats = res.stats || {};
+    const attached = res.attachedEmployees || [];
+    const comments = res.evaluationComments || [];
+    const subordinateTls = res.subordinateTls || [];
+
+    // Header info
+    if (nameEl) nameEl.textContent = sup.name || optName || empCode;
+    if (codeEl) codeEl.textContent = sup.empCode || empCode;
+    if (roleEl) roleEl.textContent = sup.roleName || optRole || 'Supervisor';
+    if (unitEl) unitEl.textContent = sup.unitName || optUnit || 'Plant Unit';
+    if (deptEl) deptEl.textContent = sup.departmentName || 'Operations';
+    
+    const isSgl = sup.roleName === 'Senior Group Leader (SGL)' || (optRole && optRole.includes('SGL'));
+    if (avatarEl) avatarEl.textContent = isSgl ? 'SGL' : 'TL';
+
+    if (hierEl) {
+      if (isSgl) {
+        const tlCount = subordinateTls.length;
+        const tlNames = subordinateTls.map(t => esc(t.name)).join(', ') || 'None';
+        hierEl.innerHTML = `Supervised Team Leaders: <strong>${tlCount} TLs</strong> (${tlNames})`;
+      } else {
+        hierEl.innerHTML = sup.sglName 
+          ? `Reporting SGL: <strong>${esc(sup.sglName)}</strong> (${esc(sup.sglCode || '')})` 
+          : 'Reporting SGL: <strong>Unassigned</strong>';
+      }
+    }
+
+    // KPI Metrics
+    if (kpiAtt) kpiAtt.textContent = stats.totalAttachedEmployees || 0;
+    if (kpiSub) kpiSub.textContent = stats.submittedEvaluations || 0;
+    const subPct = stats.totalAttachedEmployees > 0 
+      ? Math.round((stats.submittedEvaluations / stats.totalAttachedEmployees) * 100) 
+      : 0;
+    if (kpiSubRate) kpiSubRate.textContent = `${subPct}% of Team`;
+
+    if (kpiEval) kpiEval.textContent = stats.evaluatedCount || 0;
+    const evalPct = stats.totalAttachedEmployees > 0 
+      ? Math.round((stats.evaluatedCount / stats.totalAttachedEmployees) * 100) 
+      : 0;
+    if (kpiEvalRate) kpiEvalRate.textContent = `${evalPct}% Rated`;
+
+    if (kpiPend) kpiPend.textContent = stats.pendingReviewCount || 0;
+    if (kpiAvg) kpiAvg.textContent = stats.averageScore !== null ? `${Number(stats.averageScore).toFixed(1)} / 10` : '—';
+
+    // Grade Distribution Pills
+    const gd = stats.gradeDistribution || {};
+    const gradeA = (gd['Grade A+'] || 0) + (gd['Grade A'] || 0);
+    const gradeB = (gd['Grade B+'] || 0) + (gd['Grade B'] || 0);
+    const gradeC = Math.max(0, (stats.evaluatedCount || 0) - gradeA - gradeB);
+    const gAEl = document.getElementById('siGradeA');
+    const gBEl = document.getElementById('siGradeB');
+    const gCEl = document.getElementById('siGradeNeedsReview');
+    if (gAEl) gAEl.textContent = gradeA;
+    if (gBEl) gBEl.textContent = gradeB;
+    if (gCEl) gCEl.textContent = gradeC;
+
+    // Tab counts
+    const tabTeamCount = document.getElementById('siTabTeamCount');
+    const tabCommentsCount = document.getElementById('siTabCommentsCount');
+    if (tabTeamCount) tabTeamCount.textContent = attached.length;
+    if (tabCommentsCount) tabCommentsCount.textContent = comments.length;
+
+    // Render Tab 1: Attached Workforce
+    renderSupervisorInsightsTeam(attached);
+
+    // Render Tab 2: Comments & Feedback Feed
+    renderSupervisorInsightsComments(comments, isSgl);
+
+  } catch (err) {
+    console.error('Failed to load supervisor insights:', err);
+    if (tBody) tBody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#b91c1c;padding:24px;">Failed to load supervisor dossier: ${esc(err.message || 'Unknown error')}</td></tr>`;
+    if (feed) feed.innerHTML = `<div style="text-align:center;color:#b91c1c;padding:24px;">Failed to load evaluation comments: ${esc(err.message || 'Unknown error')}</div>`;
+  }
+}
+
+function switchSupervisorInsightsTab(tab) {
+  const teamBtn = document.getElementById('siTabTeamBtn');
+  const commentsBtn = document.getElementById('siTabCommentsBtn');
+  const teamContent = document.getElementById('siTabTeamContent');
+  const commentsContent = document.getElementById('siTabCommentsContent');
+
+  if (tab === 'team') {
+    teamBtn?.classList.add('active');
+    commentsBtn?.classList.remove('active');
+    teamContent?.classList.remove('hidden');
+    commentsContent?.classList.add('hidden');
+  } else {
+    commentsBtn?.classList.add('active');
+    teamBtn?.classList.remove('active');
+    commentsContent?.classList.remove('hidden');
+    teamContent?.classList.add('hidden');
+  }
+}
+
+function renderSupervisorInsightsTeam(attached, searchFilter = '') {
+  const tbody = document.getElementById('siTeamTableBody');
+  const countLabel = document.getElementById('siTeamShownCount');
+  if (!tbody) return;
+
+  const q = searchFilter.trim().toLowerCase();
+  const filtered = attached.filter(e => {
+    if (!q) return true;
+    return (e.name && e.name.toLowerCase().includes(q)) ||
+           (e.empCode && e.empCode.toLowerCase().includes(q)) ||
+           (e.departmentName && e.departmentName.toLowerCase().includes(q));
+  });
+
+  if (countLabel) {
+    countLabel.textContent = `Showing ${filtered.length} of ${attached.length} mapped employees`;
+  }
+
+  tbody.innerHTML = '';
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:24px;">No attached employees found matching search.</td></tr>';
+    return;
+  }
+
+  filtered.forEach(emp => {
+    const tr = document.createElement('tr');
+    const isEval = emp.tlScore !== null && emp.tlScore !== undefined;
+    const isSub = emp.submissionStatus === 'submitted' || emp.submissionStatus === 'Submitted';
+
+    tr.innerHTML = `
+      <td style="font-family:var(--font-mono);font-weight:700;">${esc(emp.empCode)}</td>
+      <td style="font-weight:600;">${esc(emp.name)}</td>
+      <td><span style="font-size:12px;color:var(--ink-dim);">${esc(emp.departmentName || 'Operations')}</span></td>
+      <td>
+        <span class="badge ${isEval ? 'badge-evaluated' : (isSub ? 'badge-evaluated' : 'badge-pending')}" style="${!isEval && isSub ? 'background:#e8f0fe;color:#1a73e8;' : ''}">
+          ${isEval ? 'Evaluated' : (isSub ? 'Submitted' : 'Pending')}
+        </span>
+      </td>
+      <td style="font-weight:700;font-family:var(--font-mono);">
+        ${isEval ? `${Number(emp.tlScore).toFixed(1)} / 10 <span style="font-size:11px;color:var(--ink-dim);font-weight:600;">(${esc(emp.ratingGrade || 'Grade A')})</span>` : '—'}
+      </td>
+      <td>
+        <button type="button" class="btn btn-sm btn-ghost btn-si-view-passport" data-code="${esc(emp.empCode)}" data-name="${esc(emp.name)}" style="color:var(--mahle-blue);font-weight:700;">
+          View Passport →
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.btn-si-view-passport').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      document.getElementById('supervisorInsightsModal')?.classList.add('hidden');
+      await selectEmployee(btn.dataset.code, btn.dataset.name);
+    });
+  });
+}
+
+function renderSupervisorInsightsComments(comments, isSgl) {
+  const feed = document.getElementById('siCommentsFeed');
+  if (!feed) return;
+
+  feed.innerHTML = '';
+  if (!comments || !comments.length) {
+    feed.innerHTML = `
+      <div style="background:#f8f9fd;border:1px dashed var(--panel-line);border-radius:10px;padding:32px;text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">📝</div>
+        <div style="font-weight:700;font-size:14px;color:#1e2a63;">No Evaluation Comments Recorded Yet</div>
+        <div style="font-size:12px;color:var(--ink-dim);margin-top:4px;max-width:440px;margin-left:auto;margin-right:auto;">
+          When this supervisor evaluates shop floor team members or signs off on monthly assessments, their written feedback, marks, and guidance will appear here.
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  comments.forEach(c => {
+    const card = document.createElement('div');
+    card.style = 'background:#fff;border:1px solid var(--panel-line);border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);';
+    
+    const crit = c.criteriaScores || {};
+    const hasCrit = typeof crit === 'object' && crit !== null && Object.keys(crit).length > 0;
+
+    let critHtml = '';
+    if (hasCrit) {
+      critHtml = `
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;background:#f8f9fd;border:1px solid var(--panel-line);border-radius:6px;padding:6px 10px;font-size:11px;">
+          <span style="font-weight:700;color:#1e2a63;margin-right:4px;">Criteria Marks:</span>
+          <span>Job Perf: <strong>${crit.jobPerf || crit['1'] || '—'}/20</strong></span> · 
+          <span>Attendance: <strong>${crit.attendance || crit['2'] || '—'}/10</strong></span> · 
+          <span>Work Perf: <strong>${crit.workPerf || crit['3'] || '—'}/20</strong></span> · 
+          <span>Line Perf: <strong>${crit.linePerf || crit['4'] || '—'}/20</strong></span> · 
+          <span>Recognition: <strong>${crit.recognition || crit['5'] || '—'}/10</strong></span> · 
+          <span>Doc: <strong>${crit.docGrowth || crit['6'] || '—'}/10</strong></span> · 
+          <span>AHPS: <strong>${crit.ahpsLean || crit['7'] || '—'}/10</strong></span>
+        </div>
+      `;
+    }
+
+    const reviewDate = c.reviewedAt ? new Date(c.reviewedAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : 'Recorded';
+
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+        <div>
+          <div style="font-weight:700;font-size:14px;color:#1e2a63;display:flex;align-items:center;gap:8px;">
+            <span>${esc(c.empName || c.empCode)}</span>
+            <span style="font-family:var(--font-mono);font-size:12px;color:var(--ink-dim);">(${esc(c.empCode)})</span>
+            <span class="who-unit" style="font-size:11px;">${esc(c.departmentName || 'Operations')}</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-dim);margin-top:2px;">
+            Cycle Month: <strong>${esc(c.month || 'Cycle')}</strong> · Evaluated on ${esc(reviewDate)}
+            ${c.tlName ? ` · <span style="color:#1e2a63;">TL: ${esc(c.tlName)}</span>` : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="badge badge-evaluated" style="font-size:12px;font-weight:800;font-family:var(--font-mono);">
+            ${c.score !== null && c.score !== undefined ? `${Number(c.score).toFixed(1)} / 10.0` : 'Rated'}
+          </span>
+          <span class="badge badge-score" style="font-size:11px;">${esc(c.ratingGrade || 'Grade A')}</span>
+        </div>
+      </div>
+
+      ${critHtml}
+
+      <div style="margin-top:8px;">
+        ${c.tlComments ? `
+          <div style="background:#f8f9fd;border-left:3px solid var(--mahle-blue);border-radius:4px 8px 8px 4px;padding:10px 14px;font-size:13px;color:#1e293b;line-height:1.5;margin-bottom:6px;">
+            <div style="font-size:11px;font-weight:700;color:var(--mahle-blue);text-transform:uppercase;margin-bottom:2px;">Team Leader Feedback & Guidance:</div>
+            <em>"${esc(c.tlComments)}"</em>
+          </div>
+        ` : ''}
+        ${c.sglRemarks ? `
+          <div style="background:#f0fdf4;border-left:3px solid #16a34a;border-radius:4px 8px 8px 4px;padding:10px 14px;font-size:13px;color:#14532d;line-height:1.5;">
+            <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;margin-bottom:2px;">Senior Group Leader Verification Remark:</div>
+            <em>"${esc(c.sglRemarks)}"</em>
+          </div>
+        ` : ''}
+        ${!c.tlComments && !c.sglRemarks && c.comment ? `
+          <div style="background:#f8f9fd;border-left:3px solid #1e2a63;border-radius:4px 8px 8px 4px;padding:10px 14px;font-size:13px;color:#1e293b;line-height:1.5;">
+            <em>"${esc(c.comment)}"</em>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    feed.appendChild(card);
+  });
+}
+
+// Supervisor Insights Modal event listeners
+document.getElementById('siCloseX')?.addEventListener('click', () => document.getElementById('supervisorInsightsModal')?.classList.add('hidden'));
+document.getElementById('siCloseBtn')?.addEventListener('click', () => document.getElementById('supervisorInsightsModal')?.classList.add('hidden'));
+document.getElementById('siTabTeamBtn')?.addEventListener('click', () => switchSupervisorInsightsTab('team'));
+document.getElementById('siTabCommentsBtn')?.addEventListener('click', () => switchSupervisorInsightsTab('comments'));
+document.getElementById('siTeamSearchInput')?.addEventListener('input', (e) => {
+  renderSupervisorInsightsTeam(currentSupervisorInsightsData?.attachedEmployees || [], e.target.value);
+});
+
 /* ============================= MASTER CATALOG (TRAINING & ACTIVITIES) ============================= */
 let masterTrainingsCache = null;
 let masterActivitiesCache = null;
 let masterItemsLoaded = false;
 let masterTrainingSearchQuery = '';
+let masterTrainingCategoryFilter = 'all';
 let masterActivitySearchQuery = '';
 
-const DEFAULT_TRAINING_NAMES = ['APS -4 Day', 'APS Refresher', 'TPM', 'SPC', 'PFEMA', 'EMS', 'Product Process Knowledge', 'Sales', 'Others'];
+const MASTER_TRAINING_CATEGORIES = [
+  'Generic Training Programme',
+  'Mandatory Training Plan',
+  'STOE Training Programs',
+  'Process Mastery Certification Programs',
+  'Others',
+];
+
+const DEFAULT_TRAINING_CATALOG = [
+  // 1. Generic Training Programme
+  { name: 'Advance Product Knowledge', category: 'Generic Training Programme' },
+  { name: 'NC Handling', category: 'Generic Training Programme' },
+  { name: 'BBS', category: 'Generic Training Programme' },
+  { name: 'SPC', category: 'Generic Training Programme' },
+  { name: '7QC Tools', category: 'Generic Training Programme' },
+  { name: 'Poka-Yoka', category: 'Generic Training Programme' },
+  { name: 'Control Plan', category: 'Generic Training Programme' },
+  { name: '8D Analysis', category: 'Generic Training Programme' },
+  { name: 'MSA', category: 'Generic Training Programme' },
+  { name: 'Awareness of Process', category: 'Generic Training Programme' },
+  { name: 'Metrology', category: 'Generic Training Programme' },
+  { name: 'AM', category: 'Generic Training Programme' },
+  { name: 'PFMEA', category: 'Generic Training Programme' },
+  { name: 'Production MIS', category: 'Generic Training Programme' },
+  { name: 'Good Communication Skill', category: 'Generic Training Programme' },
+  { name: 'SAP Knowledge', category: 'Generic Training Programme' },
+  { name: 'Soft Skill / BBQ Training', category: 'Generic Training Programme' },
+
+  // 2. Mandatory Training Plan
+  { name: 'Induction', category: 'Mandatory Training Plan' },
+  { name: 'CST(Creative Skill Training)', category: 'Mandatory Training Plan' },
+  { name: 'ASTEr(Advanced Skill Training for Engineers)', category: 'Mandatory Training Plan' },
+  { name: 'DISHA', category: 'Mandatory Training Plan' },
+
+  // 3. STOE Training Programs
+  { name: 'Safety', category: 'STOE Training Programs' },
+  { name: 'Quality', category: 'STOE Training Programs' },
+  { name: 'SCM', category: 'STOE Training Programs' },
+  { name: 'Design', category: 'STOE Training Programs' },
+  { name: 'Production', category: 'STOE Training Programs' },
+  { name: 'Maintenance', category: 'STOE Training Programs' },
+  { name: 'After Market', category: 'STOE Training Programs' },
+  { name: 'Tooling', category: 'STOE Training Programs' },
+  { name: 'PTT', category: 'STOE Training Programs' },
+
+  // 4. Process Mastery Certification Programs
+  { name: 'Water Leak Testing', category: 'Process Mastery Certification Programs' },
+  { name: 'ALT -Oil Filter', category: 'Process Mastery Certification Programs' },
+  { name: 'Vibration Welding', category: 'Process Mastery Certification Programs' },
+  { name: 'ALT-Air Filter/EP', category: 'Process Mastery Certification Programs' },
+  { name: 'Seaming', category: 'Process Mastery Certification Programs' },
+  { name: 'Clipping', category: 'Process Mastery Certification Programs' },
+  { name: 'Paper Pleating', category: 'Process Mastery Certification Programs' },
+  { name: 'Heat Nut', category: 'Process Mastery Certification Programs' },
+  { name: 'Dispencing & Dipping', category: 'Process Mastery Certification Programs' },
+  { name: 'Injection Moulding', category: 'Process Mastery Certification Programs' },
+  { name: 'PU - Dosing', category: 'Process Mastery Certification Programs' },
+  { name: 'Coilling', category: 'Process Mastery Certification Programs' },
+  { name: 'Stamping', category: 'Process Mastery Certification Programs' },
+  { name: 'Ultrasonic', category: 'Process Mastery Certification Programs' },
+];
+
 const DEFAULT_ACTIVITY_NAMES = ['Participation in Committees', 'Sports', 'First Aid', 'Safety Committee', 'Canteen Committee', 'Cultural Activities', 'Participation in CI-meet'];
+
+function getCategoryTheme(cat) {
+  switch (cat) {
+    case 'Generic Training Programme':
+      return { bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe', bannerBg: '#f0f7ff', titleColor: '#1d4ed8' };
+    case 'Mandatory Training Plan':
+      return { bg: '#f5f3ff', color: '#5b21b6', border: '#ddd6fe', bannerBg: '#f6f4fe', titleColor: '#6d28d9' };
+    case 'STOE Training Programs':
+      return { bg: '#fffbeb', color: '#92400e', border: '#fde68a', bannerBg: '#fef9e8', titleColor: '#b45309' };
+    case 'Process Mastery Certification Programs':
+      return { bg: '#ecfdf5', color: '#065f46', border: '#a7f3d0', bannerBg: '#f0fdf7', titleColor: '#047857' };
+    default:
+      return { bg: '#f8fafc', color: '#334155', border: '#cbd5e1', bannerBg: '#f1f5f9', titleColor: '#1e293b' };
+  }
+}
 
 async function loadMasterItems(forceRefresh = false) {
   if (masterItemsLoaded && !forceRefresh) return;
@@ -3283,29 +3808,48 @@ async function loadMasterItems(forceRefresh = false) {
       masterTrainingsCache = (Array.isArray(res.trainings) ? res.trainings : []).map(t => ({
         id: t.id,
         name: t.title || t.name,
+        category: t.category || 'Others',
         type: 'training',
-        sortOrder: t.sortOrder
+        sortOrder: t.sortOrder || 0
       }));
       masterActivitiesCache = (Array.isArray(res.activities) ? res.activities : []).map(a => ({
         id: a.id,
         name: a.title || a.name,
         type: 'activity',
-        sortOrder: a.sortOrder
+        sortOrder: a.sortOrder || 0
       }));
       masterItemsLoaded = true;
     }
   } catch (err) {
     console.warn('Failed to load master items, using fallbacks:', err);
-    if (!masterTrainingsCache) masterTrainingsCache = DEFAULT_TRAINING_NAMES.map((name, i) => ({ id: `tr_${i}`, type: 'training', name, sortOrder: i }));
-    if (!masterActivitiesCache) masterActivitiesCache = DEFAULT_ACTIVITY_NAMES.map((name, i) => ({ id: `ac_${i}`, type: 'activity', name, sortOrder: i }));
+    if (!masterTrainingsCache) {
+      masterTrainingsCache = DEFAULT_TRAINING_CATALOG.map((t, i) => ({
+        id: `tr_${i}`,
+        type: 'training',
+        name: t.name,
+        category: t.category,
+        sortOrder: i + 1
+      }));
+    }
+    if (!masterActivitiesCache) masterActivitiesCache = DEFAULT_ACTIVITY_NAMES.map((name, i) => ({ id: `ac_${i}`, type: 'activity', name, sortOrder: i + 1 }));
   }
 }
 
-function getMasterTrainingsList() {
+function getMasterTrainings() {
   if (masterTrainingsCache && masterTrainingsCache.length) {
-    return masterTrainingsCache.map(t => t.name);
+    return masterTrainingsCache;
   }
-  return DEFAULT_TRAINING_NAMES;
+  return DEFAULT_TRAINING_CATALOG.map((t, idx) => ({
+    id: `tr_${idx}`,
+    type: 'training',
+    name: t.name,
+    category: t.category,
+    sortOrder: idx + 1
+  }));
+}
+
+function getMasterTrainingsList() {
+  return getMasterTrainings().map(t => t.name);
 }
 
 function getMasterActivitiesList() {
@@ -3336,25 +3880,43 @@ function renderMasterItemsTables() {
   if (trBadge) trBadge.textContent = `${trainings.length} Topics`;
   if (acBadge) acBadge.textContent = `${activities.length} Activities`;
 
-  // Filter trainings
+  // Filter trainings by query & category
   const qTr = (masterTrainingSearchQuery || '').toLowerCase().trim();
-  const filteredTrainings = qTr ? trainings.filter(t => t.name.toLowerCase().includes(qTr)) : trainings;
+  const catFilter = masterTrainingCategoryFilter || 'all';
+
+  let filteredTrainings = trainings;
+  if (catFilter !== 'all') {
+    filteredTrainings = filteredTrainings.filter(t => (t.category || 'Others') === catFilter);
+  }
+  if (qTr) {
+    filteredTrainings = filteredTrainings.filter(t => 
+      t.name.toLowerCase().includes(qTr) || (t.category || '').toLowerCase().includes(qTr)
+    );
+  }
 
   if (trTbody) {
     if (!filteredTrainings.length) {
-      trTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:18px;color:var(--ink-dim);">${trainings.length === 0 ? 'No training courses configured yet. Add one above!' : 'No matching courses found.'}</td></tr>`;
+      trTbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:18px;color:var(--ink-dim);">${trainings.length === 0 ? 'No training courses configured yet. Add one above!' : 'No matching courses found.'}</td></tr>`;
     } else {
-      trTbody.innerHTML = filteredTrainings.map((t, idx) => `
+      trTbody.innerHTML = filteredTrainings.map((t, idx) => {
+        const cat = t.category || 'Others';
+        const theme = getCategoryTheme(cat);
+        return `
         <tr data-id="${esc(t.id)}">
           <td style="text-align:center;color:var(--ink-dim);font-weight:600;font-size:12px;">${idx + 1}</td>
           <td style="font-weight:600;color:var(--ink);font-size:13px;">${esc(t.name)}</td>
+          <td>
+            <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;border:1px solid ${theme.border};background:${theme.bg};color:${theme.color};white-space:nowrap;">
+              ${esc(cat)}
+            </span>
+          </td>
           <td style="text-align:center;">
             <button type="button" class="btn btn-sm btn-ghost del-master-item-btn" data-type="training" data-id="${esc(t.id)}" data-name="${esc(t.name)}" title="Delete Course" style="color:#dc2626;padding:3px 8px;font-size:12px;">
               Delete
             </button>
           </td>
-        </tr>
-      `).join('');
+        </tr>`;
+      }).join('');
     }
   }
 
@@ -3391,10 +3953,13 @@ async function handleAddMasterItem(type, nameInputId, errorElId) {
     if (errorEl) { errorEl.textContent = 'Please enter a name.'; errorEl.classList.remove('hidden'); }
     return;
   }
+  const categorySelect = document.getElementById('newTrainingCategorySelect');
+  const category = (type === 'training' && categorySelect) ? categorySelect.value : undefined;
+
   try {
     const res = await api('/api/admin/master-items', {
       method: 'POST',
-      body: { action: 'add', type, name, title: name }
+      body: { action: 'add', type, name, title: name, category }
     });
     if (res && (res.success || res.ok)) {
       input.value = '';
@@ -3477,6 +4042,10 @@ document.getElementById('newActivityInput')?.addEventListener('keydown', (e) => 
 
 document.getElementById('searchTrainingInput')?.addEventListener('input', (e) => {
   masterTrainingSearchQuery = e.target.value;
+  renderMasterItemsTables();
+});
+document.getElementById('adminTrainingCategoryFilter')?.addEventListener('change', (e) => {
+  masterTrainingCategoryFilter = e.target.value;
   renderMasterItemsTables();
 });
 document.getElementById('searchActivityInput')?.addEventListener('input', (e) => {
@@ -3578,36 +4147,78 @@ async function doLookupSearch(empCode) {
     if (lpRole) lpRole.textContent = role;
     if (lpDept) lpDept.textContent = dept;
 
-    const scoreVal = (assess && assess.tlScore !== null && assess.tlScore !== undefined) ? assess.tlScore : assess?.score;
-    if (lpScore) {
-      lpScore.textContent = scoreVal !== null && scoreVal !== undefined ? `${Number(scoreVal).toFixed(1)} / 10.0` : 'Not Evaluated';
-    }
-    if (lpBadge) {
-      if (scoreVal !== null && scoreVal !== undefined) {
-        lpBadge.textContent = `Evaluated · ${assess.ratingGrade || 'Grade A'}`;
-        lpBadge.className = 'badge badge-evaluated';
-      } else if (assess && (assess.submissionStatus === 'submitted' || assess.submissionStatus === 'Submitted')) {
-        lpBadge.textContent = 'Submitted · Awaiting TL Score';
-        lpBadge.className = 'badge badge-submitted';
-      } else {
-        lpBadge.textContent = 'Evaluation Pending';
-        lpBadge.className = 'badge badge-pending';
-      }
-    }
+    const isAdmin = role === 'Super Admin' || role === 'HR Head' || role === 'Unit Admin';
+    const isSupervisor = role === 'Team Leader (TL)' || role === 'Senior Group Leader (SGL)' || role === 'Team Leader' || role === 'Senior Group Leader';
 
-    // Wire action buttons
     const openBtn = document.getElementById('lpOpenBtn');
-    if (openBtn) {
-      openBtn.onclick = async () => {
-        await selectEmployee(code, name, unit);
-      };
-    }
-
     const evalBtn = document.getElementById('lpEvalBtn');
-    if (evalBtn) {
-      evalBtn.onclick = () => {
-        openEvalModal(code, name, scoreVal || 8.5, assess?.ratingGrade || '', assess?.tlComments || '');
-      };
+
+    if (isAdmin) {
+      if (lpScore) lpScore.textContent = 'Administrative Role';
+      if (lpBadge) {
+        lpBadge.textContent = 'Admin Account · No Passport';
+        lpBadge.className = 'badge';
+        lpBadge.style = 'background:#e0e7ff;color:#3730a3;font-weight:700;';
+      }
+      if (openBtn) openBtn.style.display = 'none';
+      if (evalBtn) evalBtn.style.display = 'none';
+    } else if (isSupervisor) {
+      if (lpScore) lpScore.textContent = 'Team Supervisor';
+      if (lpBadge) {
+        lpBadge.textContent = 'Supervisory Role';
+        lpBadge.className = 'badge';
+        lpBadge.style = 'background:#f0fdf4;color:#166534;font-weight:700;';
+      }
+      if (evalBtn) evalBtn.style.display = 'none';
+
+      const isSuperOrHr = currentExactRole === 'Super Admin' || currentExactRole === 'HR Head';
+      const isUnitAdmin = currentExactRole === 'Unit Admin';
+      if (openBtn) {
+        if (isSuperOrHr || isUnitAdmin) {
+          openBtn.style.display = 'inline-flex';
+          openBtn.textContent = '📊 View Supervisor Insights & Attached Team';
+          openBtn.onclick = async () => {
+            await openSupervisorInsightsModal(code, name, role, unit);
+          };
+        } else {
+          openBtn.style.display = 'none';
+        }
+      }
+    } else {
+      if (lpScore) {
+        lpScore.textContent = scoreVal !== null && scoreVal !== undefined ? `${Number(scoreVal).toFixed(1)} / 10.0` : 'Not Evaluated';
+      }
+      if (lpBadge) {
+        if (scoreVal !== null && scoreVal !== undefined) {
+          lpBadge.textContent = `Evaluated · ${assess.ratingGrade || 'Grade A'}`;
+          lpBadge.className = 'badge badge-evaluated';
+          lpBadge.style = '';
+        } else if (assess && (assess.submissionStatus === 'submitted' || assess.submissionStatus === 'Submitted')) {
+          lpBadge.textContent = 'Submitted · Awaiting TL Score';
+          lpBadge.className = 'badge badge-submitted';
+          lpBadge.style = '';
+        } else {
+          lpBadge.textContent = 'Evaluation Pending';
+          lpBadge.className = 'badge badge-pending';
+          lpBadge.style = '';
+        }
+      }
+
+      // Wire action buttons
+      if (openBtn) {
+        openBtn.style.display = 'inline-flex';
+        openBtn.textContent = 'Open Growth Passport (10 Sections)';
+        openBtn.onclick = async () => {
+          await selectEmployee(code, name, unit);
+        };
+      }
+
+      if (evalBtn) {
+        evalBtn.style.display = 'inline-flex';
+        evalBtn.onclick = () => {
+          openEvalModal(code, name, scoreVal || 8.5, assess?.ratingGrade || '', assess?.tlComments || '');
+        };
+      }
     }
 
     if (previewBox) previewBox.classList.remove('hidden');
@@ -3865,7 +4476,10 @@ async function openSheet(sheetId) {
   RENDERERS[sheetId](container, saved || {});
   if (isReadOnly) {
     container.insertAdjacentHTML('afterbegin', `<div class="readonly-banner">${readOnlyMessage}</div>`);
-    container.querySelectorAll('input, select, textarea, button').forEach(elm => elm.disabled = true);
+    container.querySelectorAll('input, select, textarea, button').forEach(elm => {
+      if (elm.id === 'trMatrixCatDropdown' || elm.id === 'trMatrixShowAllBtn') return;
+      elm.disabled = true;
+    });
   }
   document.getElementById('saveBtn').classList.toggle('hidden', isReadOnly);
 }
@@ -4125,76 +4739,298 @@ COLLECTORS.iip = () => {
 };
 
 /* ---------- 5. TRAINING MATRIX ---------- */
-const TRAINING_FIXED = ['APS -4 Day','APS Refresher','TPM','SPC','PFEMA','EMS','Product Process Knowledge','Sales','Others'];
+let currentTrainingFormData = null;
+
+function customTrRow(r, idx) {
+  return `<tr class="custom-tr-row" data-cri="${idx}">
+    <td>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="text" class="cell-text custom-tr-title" style="flex:1;" placeholder="Enter custom training topic / name…" value="${esc(r.title || '')}">
+        <button type="button" class="btn-del-row custom-tr-del-btn" title="Remove custom training" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>
+      </div>
+    </td>
+    ${MONTHS.map((m, mi) => `<td><input type="checkbox" class="custom-tr-month" data-mi="${mi}" ${r.months && r.months[mi] ? 'checked' : ''}></td>`).join('')}
+  </tr>`;
+}
+
 RENDERERS.training = (el, d) => {
-  d = Object.assign({name:'',area:'', ojt:[], fixed:{}}, d);
-  if(!d.ojt.length) d.ojt = [{title:'',months:Array(12).fill(false)}];
-  const trainingList = getMasterTrainingsList();
-  trainingList.forEach(k=>{ if(!d.fixed[k]) d.fixed[k] = Array(12).fill(false); });
+  d = Object.assign({ custom: [], ojt: [], fixed: {} }, d);
+  if ((!d.custom || !d.custom.length) && d.ojt && d.ojt.length) {
+    d.custom = d.ojt;
+  }
+  if (!Array.isArray(d.custom)) d.custom = [];
+  currentTrainingFormData = d;
+
+  const allTrainings = getMasterTrainings();
+  allTrainings.forEach(item => {
+    if (!d.fixed[item.name]) d.fixed[item.name] = Array(12).fill(false);
+  });
+
+  // Group trainings by category
+  const categorizedMap = {};
+  MASTER_TRAINING_CATEGORIES.forEach(cat => {
+    categorizedMap[cat] = [];
+  });
+
+  allTrainings.forEach(item => {
+    const cat = item.category || 'Others';
+    if (!categorizedMap[cat]) {
+      categorizedMap[cat] = [];
+    }
+    categorizedMap[cat].push(item);
+  });
+
+  // Always ensure all 5 standard categories are present
+  const categoriesPresent = [
+    'Generic Training Programme',
+    'Mandatory Training Plan',
+    'STOE Training Programs',
+    'Process Mastery Certification Programs',
+    'Others',
+  ];
+
+  // Include any extra custom categories if they exist
+  Object.keys(categorizedMap).forEach(cat => {
+    if (!categoriesPresent.includes(cat) && categorizedMap[cat].length > 0) {
+      categoriesPresent.push(cat);
+    }
+  });
+
+  let activeCat = categoriesPresent[0]; // Default is Generic Training Programme
+  let isShowAll = false; // Default is dropdown view
+
   el.innerHTML = `
-    <h2 class="section-title">Training Matrix</h2>
-    <div class="grid-2">
-      <div class="field-block"><label class="f">Name</label><input type="text" id="tr_name" value="${esc(d.name)}"></div>
-      <div class="field-block"><label class="f">Area</label><input type="text" id="tr_area" value="${esc(d.area)}"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+      <div>
+        <h2 class="section-title" style="margin:0 0 4px;">Training Matrix</h2>
+        <p class="small-note" style="margin:0;color:var(--ink-dim);">Standard company training courses & certifications. Use the dropdown to focus or Show All for complete view.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;background:#f8fafc;padding:5px 10px;border-radius:8px;border:1px solid #cbd5e1;">
+          <label for="trMatrixCatDropdown" style="font-size:12px;font-weight:700;color:#1e2a63;">Category:</label>
+          <select id="trMatrixCatDropdown" style="padding:5px 12px;border:1px solid #c9d5ec;border-radius:6px;font-size:12.5px;font-weight:700;background:#fff;color:#1e2a63;cursor:pointer;outline:none;">
+            ${categoriesPresent.map(cat => {
+              const count = (categorizedMap[cat]?.length || 0) + (cat === 'Others' ? (d.custom?.length || 0) : 0);
+              return `<option value="${esc(cat)}" ${cat === activeCat ? 'selected' : ''}>
+                ${esc(cat)} (${count})
+              </option>`;
+            }).join('')}
+          </select>
+        </div>
+        <button type="button" id="trMatrixShowAllBtn" class="btn btn-sm btn-ghost" style="padding:6px 14px;border-radius:8px;border:1px solid #cbd5e1;background:#fff;font-weight:700;font-size:12px;color:#1e2a63;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+          <span id="trMatrixShowAllIcon">☰</span>
+          <span id="trMatrixShowAllText">Show All</span>
+        </button>
+      </div>
     </div>
 
-    <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6b6455;margin:16px 0 8px;">On the Job Training</h3>
-    <p class="small-note" style="margin-bottom:8px;">Any knowledge acquired about product / process technology goes here.</p>
-    <div class="table-scroll"><table class="grid-table" id="ojtTable">
-      ${monthHeaderRow('Training')}
-      ${d.ojt.map((r,ri)=>ojtRow(r,ri)).join('')}
-    </table></div>
-    <button type="button" class="addrow-btn" id="ojtAddBtn">+ Add training</button>
-
-    <h3 style="font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#6b6455;margin:20px 0 8px;">Program Training</h3>
-    <div class="table-scroll"><table class="grid-table">
-      ${monthHeaderRow('Program')}
-      ${trainingList.map(k=>`
-        <tr><td class="rowlabel">${esc(k)}</td>
-        ${MONTHS.map((m,mi)=>`<td><input type="checkbox" class="tr-fixed" data-key="${esc(k)}" data-mi="${mi}" ${(d.fixed[k] && d.fixed[k][mi])?'checked':''}></td>`).join('')}
-        </tr>`).join('')}
-    </table></div>
+    <!-- Container for dynamic table rendering -->
+    <div id="trMatrixTablesWrapper"></div>
   `;
-  document.getElementById('ojtAddBtn')?.addEventListener('click', ()=>{
-    const tbl = document.getElementById('ojtTable');
-    const ri = tbl.querySelectorAll('tr.ojt-row').length;
-    tbl.insertAdjacentHTML('beforeend', ojtRow({title:'',months:Array(12).fill(false)}, ri));
+
+  const tablesWrapper = el.querySelector('#trMatrixTablesWrapper');
+  const catDropdown = el.querySelector('#trMatrixCatDropdown');
+  const showAllBtn = el.querySelector('#trMatrixShowAllBtn');
+  const showAllIcon = el.querySelector('#trMatrixShowAllIcon');
+  const showAllText = el.querySelector('#trMatrixShowAllText');
+
+  function syncVisibleCheckboxes() {
+    tablesWrapper.querySelectorAll('.tr-fixed').forEach(c => {
+      const key = c.dataset.key;
+      const mi = +c.dataset.mi;
+      if (!d.fixed[key]) d.fixed[key] = Array(12).fill(false);
+      d.fixed[key][mi] = c.checked;
+    });
+  }
+
+  function syncCustomRows() {
+    const customRows = [];
+    tablesWrapper.querySelectorAll('tr.custom-tr-row').forEach(tr => {
+      const title = tr.querySelector('.custom-tr-title')?.value || '';
+      const months = Array.from(tr.querySelectorAll('.custom-tr-month')).map(c => c.checked);
+      if (title.trim() || months.some(Boolean)) {
+        customRows.push({ title, months });
+      }
+    });
+    if (customRows.length > 0 || tablesWrapper.querySelector('tr.custom-tr-row')) {
+      d.custom = customRows;
+    }
+  }
+
+  function renderCategoryBlock(cat) {
+    const items = categorizedMap[cat] || [];
+    const theme = getCategoryTheme(cat);
+    const isOthers = cat === 'Others';
+    const totalCount = items.length + (isOthers ? (d.custom?.length || 0) : 0);
+
+    let rowsHtml = items.map(item => `
+      <tr><td class="rowlabel" style="font-weight:600;">${esc(item.name)}</td>
+      ${MONTHS.map((m, mi) => `<td><input type="checkbox" class="tr-fixed" data-key="${esc(item.name)}" data-mi="${mi}" ${(d.fixed[item.name] && d.fixed[item.name][mi]) ? 'checked' : ''}></td>`).join('')}
+      </tr>
+    `).join('');
+
+    let othersCustomSection = '';
+    if (isOthers) {
+      const customRows = (d.custom && d.custom.length) ? d.custom : [{ title: '', months: Array(12).fill(false) }];
+      rowsHtml += customRows.map((r, ri) => customTrRow(r, ri)).join('');
+
+      othersCustomSection = `
+        <div style="padding:10px 14px;background:#f8fafc;border-top:1px solid var(--panel-line);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <span class="small-note" style="margin:0;color:var(--ink-dim);">Add any custom or plant-specific training topics below.</span>
+          <button type="button" class="addrow-btn custom-tr-add-btn" style="margin:0;">+ Add Custom Training</button>
+        </div>
+      `;
+    }
+
+    if (!items.length && !isOthers) {
+      rowsHtml = `<tr><td colspan="13" style="text-align:center;padding:16px;color:var(--ink-dim);">No training courses found under ${esc(cat)}.</td></tr>`;
+    }
+
+    return `
+      <div class="tr-category-block" style="margin-bottom:20px;border:1px solid var(--panel-line);border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
+        <div style="background:${theme.bannerBg};border-left:5px solid ${theme.border};padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${theme.border};"></span>
+            <span style="font-size:13.5px;font-weight:800;color:${theme.titleColor};letter-spacing:0.3px;">
+              ${esc(cat)} ${isOthers ? '· Custom Trainings' : ''}
+            </span>
+          </div>
+          <span style="font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:12px;background:#fff;color:${theme.titleColor};border:1px solid ${theme.border};">
+            ${totalCount} Programs
+          </span>
+        </div>
+        <div class="table-scroll"><table class="grid-table" style="margin:0;">
+          ${monthHeaderRow('Program / Course')}
+          ${rowsHtml}
+        </table></div>
+        ${othersCustomSection}
+      </div>
+    `;
+  }
+
+  function renderTables() {
+    syncVisibleCheckboxes();
+    syncCustomRows();
+
+    if (isShowAll) {
+      showAllBtn.style.background = '#1e2a63';
+      showAllBtn.style.color = '#fff';
+      showAllBtn.style.borderColor = '#1e2a63';
+      showAllIcon.textContent = '✓';
+      showAllText.textContent = 'Showing All';
+
+      let html = '';
+      categoriesPresent.forEach(cat => {
+        html += renderCategoryBlock(cat);
+      });
+      tablesWrapper.innerHTML = html;
+    } else {
+      showAllBtn.style.background = '#fff';
+      showAllBtn.style.color = '#1e2a63';
+      showAllBtn.style.borderColor = '#cbd5e1';
+      showAllIcon.textContent = '☰';
+      showAllText.textContent = 'Show All';
+
+      tablesWrapper.innerHTML = renderCategoryBlock(activeCat);
+    }
+
+    // Keep inputs disabled if parent is in readonly mode
+    if (el.classList.contains('readonly')) {
+      tablesWrapper.querySelectorAll('.tr-fixed, .custom-tr-month, .custom-tr-title').forEach(elm => elm.disabled = true);
+      tablesWrapper.querySelectorAll('.custom-tr-del-btn, .custom-tr-add-btn').forEach(btn => btn.style.display = 'none');
+    }
+  }
+
+  // Initial render in default dropdown mode
+  renderTables();
+
+  // Category dropdown change
+  catDropdown?.addEventListener('change', (e) => {
+    activeCat = e.target.value;
+    isShowAll = false;
+    renderTables();
   });
-  document.getElementById('ojtTable')?.addEventListener('click', (e) => {
-    const delBtn = e.target.closest('.ojt-del-btn');
+
+  // Show All button toggle
+  showAllBtn?.addEventListener('click', () => {
+    isShowAll = !isShowAll;
+    renderTables();
+  });
+
+  // Checkbox change listener
+  tablesWrapper?.addEventListener('change', (e) => {
+    if (e.target && e.target.classList.contains('tr-fixed')) {
+      const key = e.target.dataset.key;
+      const mi = +e.target.dataset.mi;
+      if (!d.fixed[key]) d.fixed[key] = Array(12).fill(false);
+      d.fixed[key][mi] = e.target.checked;
+    }
+    if (e.target && e.target.classList.contains('custom-tr-month')) {
+      syncCustomRows();
+    }
+  });
+
+  // Input listener for custom training titles
+  tablesWrapper?.addEventListener('input', (e) => {
+    if (e.target && e.target.classList.contains('custom-tr-title')) {
+      syncCustomRows();
+    }
+  });
+
+  // Delegated click listener for adding/removing custom trainings in Others
+  tablesWrapper?.addEventListener('click', (e) => {
+    const addBtn = e.target.closest('.custom-tr-add-btn');
+    if (addBtn) {
+      const block = addBtn.closest('.tr-category-block');
+      const table = block?.querySelector('.grid-table');
+      if (table) {
+        const tbody = table.querySelector('tbody') || table;
+        const currentCount = block.querySelectorAll('tr.custom-tr-row').length;
+        tbody.insertAdjacentHTML('beforeend', customTrRow({ title: '', months: Array(12).fill(false) }, currentCount));
+        syncCustomRows();
+      }
+      return;
+    }
+
+    const delBtn = e.target.closest('.custom-tr-del-btn');
     if (delBtn) {
-      delBtn.closest('tr.ojt-row')?.remove();
+      const row = delBtn.closest('tr.custom-tr-row');
+      const block = row?.closest('.tr-category-block');
+      row?.remove();
+      if (block && block.querySelectorAll('tr.custom-tr-row').length === 0) {
+        const table = block.querySelector('.grid-table');
+        const tbody = table?.querySelector('tbody') || table;
+        tbody?.insertAdjacentHTML('beforeend', customTrRow({ title: '', months: Array(12).fill(false) }, 0));
+      }
+      syncCustomRows();
+      return;
     }
   });
 };
-function ojtRow(r,ri){
-  return `<tr class="ojt-row" data-ri="${ri}">
-    <td>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <input type="text" class="cell-text ojt-title" style="flex:1;" placeholder="Training description…" value="${esc(r.title || '')}">
-        <button type="button" class="btn-del-row ojt-del-btn" title="Remove row" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:2px 4px;">✕</button>
-      </div>
-    </td>
-    ${MONTHS.map((m,mi)=>`<td><input type="checkbox" class="ojt-month" data-mi="${mi}" ${r.months && r.months[mi]?'checked':''}></td>`).join('')}
-  </tr>`;
-}
+
 COLLECTORS.training = () => {
-  const ojt = [];
-  document.querySelectorAll('#ojtTable tr.ojt-row').forEach(tr=>{
-    const title = tr.querySelector('.ojt-title')?.value || '';
-    const months = Array.from(tr.querySelectorAll('.ojt-month')).map(c=>c.checked);
+  const custom = [];
+  document.querySelectorAll('#trMatrixTablesWrapper tr.custom-tr-row').forEach(tr => {
+    const title = tr.querySelector('.custom-tr-title')?.value || '';
+    const months = Array.from(tr.querySelectorAll('.custom-tr-month')).map(c => c.checked);
     if (title.trim() || months.some(Boolean)) {
-      ojt.push({ title, months });
+      custom.push({ title, months });
     }
   });
-  const fixed = {};
-  const trainingList = getMasterTrainingsList();
-  trainingList.forEach(k=>{ fixed[k] = Array(12).fill(false); });
-  document.querySelectorAll('.tr-fixed').forEach(c=>{
-    if (!fixed[c.dataset.key]) fixed[c.dataset.key] = Array(12).fill(false);
-    fixed[c.dataset.key][+c.dataset.mi] = c.checked;
+
+  const finalCustom = (custom.length > 0 || document.querySelector('#trMatrixTablesWrapper tr.custom-tr-row'))
+    ? custom
+    : (currentTrainingFormData?.custom || []);
+
+  const fixed = Object.assign({}, currentTrainingFormData?.fixed || {});
+  document.querySelectorAll('.tr-fixed').forEach(c => {
+    const key = c.dataset.key;
+    const mi = +c.dataset.mi;
+    if (!fixed[key]) fixed[key] = Array(12).fill(false);
+    fixed[key][mi] = c.checked;
   });
-  return { name: val('tr_name'), area: val('tr_area'), ojt, fixed };
+
+  return { fixed, custom: finalCustom, ojt: finalCustom };
 };
 
 /* ---------- 6. KEY LEARNINGS ---------- */

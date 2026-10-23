@@ -28,9 +28,9 @@ export async function PATCH(req: Request) {
   }
 
   const exactRole = session.exactRole || session.role;
-  if (exactRole !== 'Super Admin' && exactRole !== 'HR Head') {
+  if (exactRole !== 'Super Admin') {
     return NextResponse.json(
-      { error: 'Access denied: Only Super Admins and HR Heads are authorized to rename plant units.' },
+      { error: 'Access denied: Only Super Admin is authorized to rename plant units.' },
       { status: 403 }
     );
   }

@@ -202,11 +202,11 @@ export default function Page() {
                 <button type="button" class="unit-pill" data-unit="Parwanoo">Parwanoo</button>
                 <button type="button" class="unit-pill" data-unit="Pune">Pune</button>
               </div>
-              <button type="button" class="btn btn-xs btn-ghost" id="unitBarEditBtn" style="margin-left:auto;font-size:12px;display:none;align-items:center;gap:4px;border:1px dashed var(--panel-line);padding:4px 10px;border-radius:20px;font-weight:600;color:var(--mahle-blue);" title="Rename Plant Units (Admin & HR Head)">
+              <button type="button" class="btn btn-xs btn-ghost" id="unitBarEditBtn" style="margin-left:auto;font-size:12px;display:none;align-items:center;gap:4px;border:1px dashed var(--panel-line);padding:4px 10px;border-radius:20px;font-weight:600;color:var(--mahle-blue);" title="Rename Plant Units (Super Admin Only)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                 <span>Edit Unit Names</span>
               </button>
-              <button type="button" class="btn btn-xs btn-ghost" id="adminMasterCatalogBtn" style="margin-left:8px;font-size:12px;display:none;align-items:center;gap:4px;border:1px dashed var(--panel-line);padding:4px 10px;border-radius:20px;font-weight:600;color:var(--mahle-blue);" title="Manage Training Matrix & Activities (Super Admin & HR Head)">
+              <button type="button" class="btn btn-xs btn-ghost" id="adminMasterCatalogBtn" style="margin-left:8px;font-size:12px;display:none;align-items:center;gap:4px;border:1px dashed var(--panel-line);padding:4px 10px;border-radius:20px;font-weight:600;color:var(--mahle-blue);" title="Manage Training Matrix &amp; Activities (Super Admin Only)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                 <span>Training &amp; Activities</span>
               </button>
@@ -1073,8 +1073,15 @@ export default function Page() {
               <label class="f" for="newTrainingInput" style="font-size:12px;font-weight:700;color:#1e2a63;display:block;margin-bottom:6px;">
                 + Add New Training Course / Topic
               </label>
-              <div style="display:flex;gap:8px;">
-                <input type="text" id="newTrainingInput" placeholder="e.g. Poka-Yoke / Error Proofing, 5S Discipline, Six Sigma Basics..." style="flex:1;padding:8px 12px;border:1px solid var(--panel-line);border-radius:6px;font-size:13px;background:#fff;">
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <select id="newTrainingCategorySelect" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--panel-line);border-radius:6px;font-size:12.5px;background:#fff;color:var(--ink);font-weight:600;">
+                  <option value="Generic Training Programme">Generic Training Programme</option>
+                  <option value="Mandatory Training Plan">Mandatory Training Plan</option>
+                  <option value="STOE Training Programs">STOE Training Programs</option>
+                  <option value="Process Mastery Certification Programs">Process Mastery Certification Programs</option>
+                  <option value="Others">Others (Custom / Any)</option>
+                </select>
+                <input type="text" id="newTrainingInput" placeholder="Course title (or any custom training in Others)..." style="flex:2;min-width:200px;padding:8px 12px;border:1px solid var(--panel-line);border-radius:6px;font-size:13px;background:#fff;">
                 <button type="button" class="btn btn-primary" id="addTrainingBtn" style="white-space:nowrap;padding:8px 14px;">
                   Add Course
                 </button>
@@ -1083,8 +1090,16 @@ export default function Page() {
             </div>
 
             <!-- Filter & List Header -->
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
-              <input type="text" id="searchTrainingInput" placeholder="Search training courses..." style="width:100%;padding:6px 10px;border:1px solid var(--panel-line);border-radius:6px;font-size:12.5px;background:#fff;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+              <select id="adminTrainingCategoryFilter" style="flex:1;min-width:170px;padding:6px 10px;border:1px solid var(--panel-line);border-radius:6px;font-size:12.5px;background:#fff;color:var(--ink);font-weight:600;">
+                <option value="all">All Categories (All Courses)</option>
+                <option value="Generic Training Programme">Generic Training Programme</option>
+                <option value="Mandatory Training Plan">Mandatory Training Plan</option>
+                <option value="STOE Training Programs">STOE Training Programs</option>
+                <option value="Process Mastery Certification Programs">Process Mastery Certification Programs</option>
+                <option value="Others">Others</option>
+              </select>
+              <input type="text" id="searchTrainingInput" placeholder="Search training courses..." style="flex:1.5;min-width:180px;padding:6px 10px;border:1px solid var(--panel-line);border-radius:6px;font-size:12.5px;background:#fff;">
             </div>
 
             <!-- Training Items Table -->
@@ -1092,13 +1107,14 @@ export default function Page() {
               <table class="grid-table" style="margin:0;width:100%;">
                 <thead>
                   <tr style="background:#f8f9fd;">
-                    <th style="width:48px;text-align:center;">#</th>
+                    <th style="width:40px;text-align:center;">#</th>
                     <th style="text-align:left;">Course / Topic Name</th>
-                    <th style="width:80px;text-align:center;">Action</th>
+                    <th style="width:160px;text-align:left;">Category</th>
+                    <th style="width:70px;text-align:center;">Action</th>
                   </tr>
                 </thead>
                 <tbody id="masterTrainingTableBody">
-                  <tr><td colspan="3" style="text-align:center;padding:18px;color:var(--ink-dim);">Loading training catalog…</td></tr>
+                  <tr><td colspan="4" style="text-align:center;padding:18px;color:var(--ink-dim);">Loading training catalog…</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1723,6 +1739,136 @@ export default function Page() {
         <button type="button" class="btn btn-primary" id="unitEditSaveBtn">Authorize &amp; Rename Unit</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Supervisor Insights & Attached Workforce Modal (Super Admin / Unit Admin / HR Head) -->
+<div id="supervisorInsightsModal" class="modal-backdrop hidden">
+  <div class="modal-card" style="max-width:940px;width:95%;max-height:92vh;overflow-y:auto;padding:24px;">
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;border-bottom:1px solid var(--panel-line);padding-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="siAvatar" style="width:48px;height:48px;border-radius:10px;background:var(--mahle-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:var(--font-mono);font-size:16px;">
+          TL
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <h2 id="siName" style="margin:0;font-size:20px;font-weight:800;">Supervisor Name</h2>
+            <span class="badge badge-score" id="siRoleBadge">Team Leader (TL)</span>
+            <span class="badge badge-evaluated" id="siUnitBadge">Plant Unit</span>
+          </div>
+          <div style="font-size:12.5px;color:var(--ink-dim);margin-top:4px;display:flex;gap:14px;flex-wrap:wrap;">
+            <span>ID: <strong id="siCode" style="font-family:var(--font-mono);color:#1e2a63;">—</strong></span>
+            <span>Department: <strong id="siDept">—</strong></span>
+            <span id="siHierarchyMeta">Supervisory Hierarchy: —</span>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-sm btn-ghost" id="siCloseX" style="font-size:16px;line-height:1;padding:4px 10px;">✕</button>
+    </div>
+
+    <!-- Security/Scope Info Banner -->
+    <div style="background:#f0f5ff;border:1px solid #c9dcfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">ℹ️</span>
+        <span style="font-size:12px;color:#1e40af;font-weight:600;">
+          <strong>Supervisor Dossier:</strong> Supervisors do not maintain individual growth passports. This console provides oversight into team workload, evaluation rigor, and employee comments.
+        </span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:11px;font-weight:700;color:#1e2a63;text-transform:uppercase;">Cycle:</span>
+        <span class="badge badge-evaluated" id="siCycleBadge" style="font-size:11px;">October 2026</span>
+      </div>
+    </div>
+
+    <!-- Supervisor KPI Stats Grid (5 Cards) -->
+    <div class="stat-grid" id="siKpiGrid" style="grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px;margin-bottom:18px;">
+      <div class="stat-card" style="padding:12px 14px;">
+        <span class="stat-label">Attached Employees</span>
+        <span class="stat-num" id="siKpiAttached" style="font-size:22px;">0</span>
+        <span class="stat-sub">Mapped Workforce</span>
+      </div>
+      <div class="stat-card" style="padding:12px 14px;">
+        <span class="stat-label">Reports Submitted</span>
+        <span class="stat-num" id="siKpiSubmitted" style="font-size:22px;">0</span>
+        <span class="stat-sub" id="siKpiSubRate">0% of Team</span>
+      </div>
+      <div class="stat-card" style="padding:12px 14px;border-left:3px solid #15803d;">
+        <span class="stat-label">Evaluations Done</span>
+        <span class="stat-num" id="siKpiEvaluated" style="font-size:22px;color:#15803d;">0</span>
+        <span class="stat-sub" id="siKpiEvalRate">0% Rated</span>
+      </div>
+      <div class="stat-card" style="padding:12px 14px;border-left:3px solid #d97706;">
+        <span class="stat-label">Pending Review</span>
+        <span class="stat-num" id="siKpiPending" style="font-size:22px;color:#b45309;">0</span>
+        <span class="stat-sub">Awaiting Marks</span>
+      </div>
+      <div class="stat-card" style="padding:12px 14px;">
+        <span class="stat-label">Average Score</span>
+        <span class="stat-num" id="siKpiAvgScore" style="font-size:22px;">—</span>
+        <span class="stat-sub">Out of 10.0</span>
+      </div>
+    </div>
+
+    <!-- Grade distribution pill bar -->
+    <div style="background:#f8f9fd;border:1px solid var(--panel-line);border-radius:8px;padding:10px 14px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div style="font-size:12px;font-weight:700;color:#1e2a63;">Score Distribution Awarded:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" id="siGradePills">
+        <span style="background:#effcf6;border:1px solid #c2f0d9;border-radius:6px;padding:3px 8px;font-size:11.5px;font-weight:700;color:#15803d;">Grade A: <strong id="siGradeA">0</strong></span>
+        <span style="background:#f0f5ff;border:1px solid #d0e1fd;border-radius:6px;padding:3px 8px;font-size:11.5px;font-weight:700;color:#1e40af;">Grade B: <strong id="siGradeB">0</strong></span>
+        <span style="background:#fffbeb;border:1px solid #fee3a2;border-radius:6px;padding:3px 8px;font-size:11.5px;font-weight:700;color:#b45309;">Needs Review: <strong id="siGradeNeedsReview">0</strong></span>
+      </div>
+    </div>
+
+    <!-- Interactive Navigation Tabs -->
+    <div style="display:flex;align-items:center;gap:8px;border-bottom:2px solid var(--panel-line);margin-bottom:16px;">
+      <button type="button" class="dir-pill active" id="siTabTeamBtn" style="border-radius:6px 6px 0 0;font-weight:700;padding:8px 16px;">
+        👥 Attached Employees (<span id="siTabTeamCount">0</span>)
+      </button>
+      <button type="button" class="dir-pill" id="siTabCommentsBtn" style="border-radius:6px 6px 0 0;font-weight:700;padding:8px 16px;">
+        💬 Evaluation Comments &amp; Remarks (<span id="siTabCommentsCount">0</span>)
+      </button>
+    </div>
+
+    <!-- Tab 1: Attached Workforce -->
+    <div id="siTabTeamContent">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap;">
+        <input type="text" id="siTeamSearchInput" placeholder="Filter attached employees by name or code..." style="max-width:320px;width:100%;padding:6px 10px;border:1px solid var(--panel-line);border-radius:6px;font-size:12.5px;">
+        <span style="font-size:12px;color:var(--ink-dim);" id="siTeamShownCount">Showing all mapped employees</span>
+      </div>
+      <div class="table-wrap" style="max-height:340px;overflow-y:auto;">
+        <table class="data-table" style="font-size:12.5px;">
+          <thead>
+            <tr>
+              <th>Emp Code</th>
+              <th>Full Name</th>
+              <th>Department</th>
+              <th>Submission</th>
+              <th>Rating / Score</th>
+              <th style="min-width:140px;">Growth Passport</th>
+            </tr>
+          </thead>
+          <tbody id="siTeamTableBody">
+            <tr><td colspan="6" style="text-align:center;color:var(--ink-dim);padding:20px;">Loading attached employees…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 2: Supervisor Evaluation Comments Feed -->
+    <div id="siTabCommentsContent" class="hidden">
+      <div style="font-size:12px;color:var(--ink-dim);margin-bottom:12px;">
+        Historical evaluation comments, feedback, and marking criteria submitted by this supervisor for their team.
+      </div>
+      <div id="siCommentsFeed" style="display:flex;flex-direction:column;gap:12px;max-height:380px;overflow-y:auto;padding-right:4px;">
+        <div style="text-align:center;color:var(--ink-dim);padding:24px;">Loading evaluation comments…</div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;border-top:1px solid var(--panel-line);padding-top:14px;">
+      <button type="button" class="btn btn-ghost" id="siCloseBtn">Close Dossier</button>
+    </div>
   </div>
 </div>
 

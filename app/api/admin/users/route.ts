@@ -52,11 +52,14 @@ export async function POST(req: Request) {
   }
 
   const exact = session.exactRole || session.role;
-  const isSuperAdmin = exact === 'Super Admin' || exact === 'HR Head';
+  const isSuperAdmin = exact === 'Super Admin';
   const isUnitAdmin = exact === 'Unit Admin';
 
   if (!isSuperAdmin && !isUnitAdmin) {
-    return NextResponse.json({ error: 'Unauthorized. Admin privilege required.' }, { status: 403 });
+    return NextResponse.json(
+      { error: 'Forbidden. HR Head has read-only audit access. User creation and role management are strictly restricted to Super Admin.' },
+      { status: 403 }
+    );
   }
 
   try {
@@ -200,6 +203,13 @@ export async function POST(req: Request) {
       passwordHash = bcrypt.hashSync(String(password).trim(), 10);
     }
 
+    // Unit Admin restrictions
+    if (isUnitAdmin) {
+      if (resolvedRoleName === 'Super Admin' || resolvedRoleName === 'HR Head' || resolvedRoleName === 'Unit Admin') {
+        return NextResponse.json({ error: 'Unit Admin cannot assign executive or administrative roles.' }, { status: 403 });
+      }
+    }
+
     const existing = await pool.request()
       .input('empCode', sql.NVarChar, codeUpper)
       .query('SELECT id, passwordHash FROM [User] WHERE empCode = @empCode');
@@ -207,6 +217,23 @@ export async function POST(req: Request) {
     const activeBit = isActive === false || isActive === 0 ? 0 : 1;
 
     if (existing.recordset.length > 0) {
+      // Protect Super Admin account from demotion or deactivation
+      const targetUserRes = await pool.request()
+        .input('empCode', sql.NVarChar, codeUpper)
+        .query('SELECT u.id, r.name AS roleName FROM [User] u JOIN [Role] r ON u.roleId = r.id WHERE u.empCode = @empCode');
+      const targetRoleName = targetUserRes.recordset[0]?.roleName;
+
+      if (targetRoleName === 'Super Admin') {
+        if (!isSuperAdmin) {
+          return NextResponse.json({ error: 'Super Admin accounts can only be managed by Super Admin.' }, { status: 403 });
+        }
+        if (resolvedRoleName !== 'Super Admin') {
+          return NextResponse.json({ error: 'The Super Admin role cannot be demoted or changed.' }, { status: 400 });
+        }
+        if (activeBit === 0) {
+          return NextResponse.json({ error: 'The Super Admin account cannot be deactivated.' }, { status: 400 });
+        }
+      }
       // If no new password given, retain existing hash
       const finalHash = passwordHash || existing.recordset[0].passwordHash;
 
@@ -349,11 +376,13 @@ export async function PATCH(req: Request) {
   }
 
   const exact = session.exactRole || session.role;
-  const isSuperAdmin = exact === 'Super Admin' || exact === 'HR Head';
-  const isUnitAdmin = exact === 'Unit Admin';
+  const isSuperAdmin = exact === 'Super Admin';
 
-  if (!isSuperAdmin && !isUnitAdmin) {
-    return NextResponse.json({ error: 'Unauthorized.' }, { status: 403 });
+  if (!isSuperAdmin) {
+    return NextResponse.json(
+      { error: 'Forbidden. HR Head has read-only audit access. Account status changes are restricted to Super Admin.' },
+      { status: 403 }
+    );
   }
 
   try {
@@ -368,6 +397,14 @@ export async function PATCH(req: Request) {
 
     // Action 1: Toggle active status
     if (action === 'toggle-status') {
+      const pool = await getPool();
+      const targetUser = await pool.request()
+        .input('empCode', sql.NVarChar, codeUpper)
+        .query('SELECT u.id, r.name AS roleName FROM [User] u JOIN [Role] r ON u.roleId = r.id WHERE u.empCode = @empCode');
+      if (targetUser.recordset[0]?.roleName === 'Super Admin') {
+        return NextResponse.json({ error: 'The Super Admin account cannot be deactivated.' }, { status: 400 });
+      }
+
       const updated = await store.toggleUserActive(codeUpper);
       if (!updated) {
         return NextResponse.json({ error: 'User not found.' }, { status: 404 });

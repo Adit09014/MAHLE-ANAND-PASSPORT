@@ -21,10 +21,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await getSession();
   const exact = session?.exactRole || session?.role;
-  const isSuperOrHr = exact === 'Super Admin' || exact === 'HR Head';
-  if (!isSuperOrHr) {
+  if (exact !== 'Super Admin') {
     return NextResponse.json(
-      { error: 'Access denied: Only Super Admin and HR Head can configure assessment cycles.' },
+      { error: 'Access denied: Only Super Admin can configure assessment cycles.' },
       { status: 403 }
     );
   }
